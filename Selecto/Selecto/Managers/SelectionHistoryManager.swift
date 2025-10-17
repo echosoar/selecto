@@ -1,0 +1,176 @@
+//
+//  SelectionHistoryManager.swift
+//  Selecto
+//
+//  Created by Gao Yang on 2024.
+//  Copyright © 2024 Gao Yang. All rights reserved.
+//
+
+import Foundation
+
+/// 选择历史项
+/// Selection history item
+struct SelectionHistory: Identifiable, Codable {
+    /// 唯一标识符
+    /// Unique identifier
+    let id: UUID
+    
+    /// 选中的文本
+    /// Selected text
+    let text: String
+    
+    /// 时间戳
+    /// Timestamp
+    let timestamp: Date
+    
+    init(text: String) {
+        self.id = UUID()
+        self.text = text
+        self.timestamp = Date()
+    }
+}
+
+/// 选择历史管理器
+/// Selection history manager
+/// 管理选择文本的历史记录
+/// Manages history of selected text
+class SelectionHistoryManager {
+    
+    // MARK: - Singleton
+    
+    /// 单例实例
+    /// Singleton instance
+    static let shared = SelectionHistoryManager()
+    
+    private init() {
+        loadSettings()
+        loadHistory()
+    }
+    
+    // MARK: - Properties
+    
+    /// 是否启用历史记录
+    /// Whether history is enabled
+    var isEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(isEnabled, forKey: "SelectionHistoryEnabled")
+            if !isEnabled {
+                // 禁用时清空历史记录
+                // Clear history when disabled
+                clearHistory()
+            }
+        }
+    }
+    
+    /// 历史记录列表（最多保存10条）
+    /// History list (max 10 items)
+    private var history: [SelectionHistory] = []
+    
+    /// 最大历史记录数量
+    /// Maximum history count
+    private let maxHistoryCount = 10
+    
+    /// 历史记录文件路径
+    /// History file path
+    private var historyFileURL: URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appFolder = appSupport.appendingPathComponent("Selecto", isDirectory: true)
+        
+        // 确保目录存在
+        // Ensure directory exists
+        try? FileManager.default.createDirectory(at: appFolder, withIntermediateDirectories: true)
+        
+        return appFolder.appendingPathComponent("history.json")
+    }
+    
+    // MARK: - Public Methods
+    
+    /// 添加选择记录
+    /// Add selection record
+    /// - Parameter text: 选中的文本 / Selected text
+    func addSelection(_ text: String) {
+        guard isEnabled else { return }
+        
+        // 过滤掉空白文本和太短的文本
+        // Filter out blank text and text that is too short
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty, trimmedText.count >= 2 else { return }
+        
+        // 检查是否与最近的记录重复
+        // Check if duplicate with recent record
+        if let lastHistory = history.first, lastHistory.text == trimmedText {
+            return
+        }
+        
+        // 添加新记录到开头
+        // Add new record to the beginning
+        let newHistory = SelectionHistory(text: trimmedText)
+        history.insert(newHistory, at: 0)
+        
+        // 保持最多10条记录
+        // Keep max 10 records
+        if history.count > maxHistoryCount {
+            history = Array(history.prefix(maxHistoryCount))
+        }
+        
+        // 保存到文件
+        // Save to file
+        saveHistory()
+    }
+    
+    /// 获取历史记录列表
+    /// Get history list
+    /// - Returns: 历史记录数组 / History array
+    func getHistory() -> [SelectionHistory] {
+        return history
+    }
+    
+    /// 清空历史记录
+    /// Clear history
+    func clearHistory() {
+        history.removeAll()
+        saveHistory()
+    }
+    
+    // MARK: - Private Methods
+    
+    /// 加载设置
+    /// Load settings
+    private func loadSettings() {
+        // 默认启用历史记录
+        // History enabled by default
+        isEnabled = UserDefaults.standard.object(forKey: "SelectionHistoryEnabled") as? Bool ?? true
+    }
+    
+    /// 加载历史记录
+    /// Load history
+    private func loadHistory() {
+        guard isEnabled else { return }
+        
+        // 尝试从文件加载
+        // Try to load from file
+        if FileManager.default.fileExists(atPath: historyFileURL.path) {
+            do {
+                let data = try Data(contentsOf: historyFileURL)
+                let decoder = JSONDecoder()
+                history = try decoder.decode([SelectionHistory].self, from: data)
+            } catch {
+                print("加载历史记录失败 (Failed to load history): \(error)")
+                history = []
+            }
+        }
+    }
+    
+    /// 保存历史记录
+    /// Save history
+    private func saveHistory() {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(history)
+            try data.write(to: historyFileURL)
+        } catch {
+            print("保存历史记录失败 (Failed to save history): \(error)")
+        }
+    }
+}

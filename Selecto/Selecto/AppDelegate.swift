@@ -1,16 +1,44 @@
 //
-//  AppDelegate.swift
+//  SelectoApp.swift
 //  Selecto
 //
 //  Created by Gao Yang on 2024.
 //  Copyright © 2024 Gao Yang. All rights reserved.
 //
 
-import Cocoa
+import SwiftUI
 
-/// 应用程序主代理类
-/// Main application delegate class
+/// Selecto 主应用程序
+/// Selecto main application
 @main
+struct SelectoApp: App {
+    
+    /// 应用代理
+    /// App delegate
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("关于 Selecto (About)") {
+                    NSApp.orderFrontStandardAboutPanel(options: [
+                        .applicationName: "Selecto",
+                        .applicationVersion: "1.0",
+                        .credits: NSAttributedString(string: "一个强大的 macOS 划词增强工具\nA powerful macOS text selection enhancement tool"),
+                        .copyright: "Copyright © 2024 Gao Yang"
+                    ])
+                }
+            }
+        }
+    }
+}
+
+/// 应用代理类
+/// App delegate class
 class AppDelegate: NSObject, NSApplicationDelegate {
     
     // MARK: - Properties
@@ -27,10 +55,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Toolbar window controller
     private var toolbarController: ToolbarWindowController?
     
-    /// 设置窗口控制器
-    /// Settings window controller
-    private var settingsWindowController: SettingsWindowController?
-    
     // MARK: - Application Lifecycle
     
     /// 应用程序启动完成回调
@@ -40,15 +64,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup status bar icon
         setupStatusBar()
         
-        // 检查并请求必要的权限
-        // Check and request necessary permissions
-        PermissionManager.shared.checkPermissions()
-        
         // 初始化选择监控器
         // Initialize selection monitor
         selectionMonitor = SelectionMonitor()
         selectionMonitor?.delegate = self
-        selectionMonitor?.startMonitoring()
+        
+        // 只有在权限授予后才启动监控
+        // Only start monitoring after permissions are granted
+        if PermissionManager.shared.checkAccessibilityPermission() {
+            selectionMonitor?.startMonitoring()
+        }
         
         // 初始化工具栏控制器
         // Initialize toolbar controller
@@ -69,6 +94,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
     
+    // MARK: - Public Methods
+    
+    /// 启动文本选择监控
+    /// Start text selection monitoring
+    func startMonitoring() {
+        selectionMonitor?.startMonitoring()
+    }
+    
     // MARK: - Private Methods
     
     /// 设置状态栏菜单
@@ -86,35 +119,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create menu
         let menu = NSMenu()
         
-        menu.addItem(NSMenuItem(title: "设置 (Settings)", action: #selector(openSettings), keyEquivalent: ","))
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "关于 Selecto (About)", action: #selector(showAbout), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "显示设置 (Show Settings)", action: #selector(showSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "退出 (Quit)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         
         statusItem?.menu = menu
     }
     
-    /// 打开设置窗口
-    /// Open settings window
-    @objc private func openSettings() {
-        if settingsWindowController == nil {
-            settingsWindowController = SettingsWindowController()
+    /// 显示设置窗口
+    /// Show settings window
+    @objc private func showSettings() {
+        // 激活应用并显示主窗口
+        // Activate app and show main window
+        NSApp.activate(ignoringOtherApps: true)
+        for window in NSApp.windows {
+            if window.contentViewController != nil {
+                window.makeKeyAndOrderFront(nil)
+                break
+            }
         }
-        settingsWindowController?.showWindow(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-    
-    /// 显示关于对话框
-    /// Show about dialog
-    @objc private func showAbout() {
-        NSApp.orderFrontStandardAboutPanel(options: [
-            .applicationName: "Selecto",
-            .applicationVersion: "1.0",
-            .credits: NSAttributedString(string: "一个强大的 macOS 划词增强工具\nA powerful macOS text selection enhancement tool"),
-            .copyright: "Copyright © 2024 Gao Yang"
-        ])
-        NSApp.activate(ignoringOtherApps: true)
     }
 }
 
@@ -124,6 +147,10 @@ extension AppDelegate: SelectionMonitorDelegate {
     /// 当检测到文本选择时调用
     /// Called when text selection is detected
     func didDetectTextSelection(text: String, bounds: CGRect) {
+        // 记录选择的文本
+        // Log selected text
+        SelectionHistoryManager.shared.addSelection(text)
+        
         // 检查是否符合用户配置的条件
         // Check if matches user-configured conditions
         let actions = ActionManager.shared.getMatchingActions(for: text)

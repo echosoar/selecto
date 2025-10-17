@@ -17,6 +17,8 @@
 		1000000000000008 /* ActionExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000008 /* ActionExecutor.swift */; };
 		1000000000000009 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000009 /* PermissionManager.swift */; };
 		100000000000000A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000A /* SettingsView.swift */; };
+		100000000000000B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000B /* ContentView.swift */; };
+		100000000000000C /* SelectionHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000C /* SelectionHistoryManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,8 +32,10 @@
 		2000000000000008 /* ActionExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionExecutor.swift; sourceTree = "<group>"; };
 		2000000000000009 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
 		200000000000000A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		200000000000000B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		200000000000000C /* Selecto.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Selecto.entitlements; sourceTree = "<group>"; };
+		200000000000000B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		200000000000000C /* SelectionHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionHistoryManager.swift; sourceTree = "<group>"; };
+		200000000000000D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		200000000000000E /* Selecto.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Selecto.entitlements; sourceTree = "<group>"; };
 		3000000000000001 /* Selecto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Selecto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -65,8 +69,8 @@
 				5000000000000004 /* Models */,
 				5000000000000005 /* Managers */,
 				5000000000000006 /* Views */,
-				200000000000000B /* Info.plist */,
-				200000000000000C /* Selecto.entitlements */,
+				200000000000000D /* Info.plist */,
+				200000000000000E /* Selecto.entitlements */,
 			);
 			path = Selecto;
 			sourceTree = "<group>";
@@ -93,9 +97,20 @@
 				2000000000000007 /* ActionManager.swift */,
 				2000000000000008 /* ActionExecutor.swift */,
 				2000000000000009 /* PermissionManager.swift */,
+				200000000000000C /* SelectionHistoryManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
+		};
+		5000000000000006 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000A /* SettingsView.swift */,
+				200000000000000B /* ContentView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
 		};
 		5000000000000006 /* Views */ = {
 			isa = PBXGroup;
@@ -183,6 +198,8 @@
 				1000000000000008 /* ActionExecutor.swift in Sources */,
 				1000000000000009 /* PermissionManager.swift in Sources */,
 				100000000000000A /* SettingsView.swift in Sources */,
+				100000000000000B /* ContentView.swift in Sources */,
+				100000000000000C /* SelectionHistoryManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
