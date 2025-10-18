@@ -69,23 +69,52 @@ class ToolbarWindowController: NSWindowController {
     ///   - bounds: 选中文本的边界 / Bounds of selected text
     ///   - text: 选中的文本 / Selected text
     func showToolbar(with actions: [ActionItem], at bounds: CGRect, selectedText text: String) {
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty, !actions.isEmpty else {
+            hideToolbar()
+            return
+        }
+        
         currentActions = actions
         selectedText = text
         
         // 更新工具栏内容
         // Update toolbar content
         toolbarView?.updateActions(actions, selectedText: text)
+        toolbarView?.layoutSubtreeIfNeeded()
         
-        // 计算工具栏位置（在选中文本上方）
-        // Calculate toolbar position (above selected text)
-        let toolbarHeight: CGFloat = 50
-        let toolbarWidth: CGFloat = CGFloat(min(actions.count * 60 + 20, 400))
+        let preferredSize = toolbarView?.fittingSize ?? NSSize(width: 200, height: 44)
+        let toolbarWidth = min(max(preferredSize.width + 20, 180), 500)
+        let toolbarHeight = max(preferredSize.height + 20, 44)
         
-        // 屏幕坐标转换（macOS 坐标系统原点在左下角）
-        // Screen coordinate conversion (macOS coordinate system origin is bottom-left)
-        let screenFrame = NSScreen.main?.frame ?? .zero
-        let xPosition = max(10, min(bounds.midX - toolbarWidth / 2, screenFrame.width - toolbarWidth - 10))
-        let yPosition = screenFrame.height - bounds.minY + 10
+        guard let screen = screenForSelection(bounds) ?? NSScreen.main else {
+            window?.orderOut(nil)
+            return
+        }
+        let screenFrame = screen.visibleFrame
+        
+        let horizontalPadding: CGFloat = 10
+        var xPosition = bounds.midX - toolbarWidth / 2
+        xPosition = max(screenFrame.minX + horizontalPadding, xPosition)
+        xPosition = min(screenFrame.maxX - toolbarWidth - horizontalPadding, xPosition)
+        
+        let offsetBelowSelection: CGFloat = 16
+        var yPosition = bounds.minY - toolbarHeight - offsetBelowSelection
+        yPosition = min(yPosition, bounds.minY - toolbarHeight) // 确保在选区下方
+        let maximumGap: CGFloat = 30
+        let gap = bounds.minY - (yPosition + toolbarHeight)
+        if gap > maximumGap {
+            yPosition = bounds.minY - toolbarHeight - maximumGap
+        }
+        let verticalPadding: CGFloat = 10
+        yPosition = max(screenFrame.minY + verticalPadding, yPosition)
+        yPosition = min(screenFrame.maxY - toolbarHeight - verticalPadding, yPosition)
+        let finalGap = bounds.minY - (yPosition + toolbarHeight)
+        if finalGap > maximumGap {
+            let adjustedY = bounds.minY - toolbarHeight - maximumGap
+            yPosition = max(screenFrame.minY + verticalPadding,
+                            min(adjustedY, screenFrame.maxY - toolbarHeight - verticalPadding))
+        }
         
         window?.setFrame(
             NSRect(x: xPosition, y: yPosition, width: toolbarWidth, height: toolbarHeight),
@@ -132,6 +161,18 @@ class ToolbarWindowController: NSWindowController {
         autoHideTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
             self?.hideToolbar()
         }
+    }
+    
+    /// 获取与选区匹配的屏幕
+    /// Get the screen that contains the selection bounds
+    private func screenForSelection(_ bounds: CGRect) -> NSScreen? {
+        let selectionCenter = CGPoint(x: bounds.midX, y: bounds.midY)
+        for screen in NSScreen.screens {
+            if screen.frame.contains(selectionCenter) {
+                return screen
+            }
+        }
+        return nil
     }
 }
 

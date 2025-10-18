@@ -45,6 +45,10 @@ class SelectionMonitor {
     /// Currently selected text
     private var currentSelectedText: String?
     
+    /// 当前选区的边界
+    /// Bounds of the current selection
+    private var currentSelectionBounds: CGRect?
+    
     /// 定时器用于检查选择状态
     /// Timer for checking selection state
     private var checkTimer: Timer?
@@ -125,11 +129,25 @@ class SelectionMonitor {
     private func checkForTextSelection() {
         // 使用辅助功能 API 获取选中的文本
         // Use Accessibility API to get selected text
-        guard let (text, bounds) = getSelectedTextViaAccessibility() else {
+        guard let (text, rawBounds, coordinateSpace) = getSelectedTextViaAccessibility() else {
             // 如果没有选中文本，通知代理
             // If no text is selected, notify delegate
             if currentSelectedText != nil {
                 currentSelectedText = nil
+                currentSelectionBounds = nil
+                delegate?.didCancelTextSelection()
+            }
+            return
+        }
+
+        let bounds = normalizeBounds(rawBounds, from: coordinateSpace)
+        
+        // 过滤空白字符的选区
+        // Ignore selections that contain only whitespace characters
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if currentSelectedText != nil {
+                currentSelectedText = nil
+                currentSelectionBounds = nil
                 delegate?.didCancelTextSelection()
             }
             return
@@ -137,8 +155,17 @@ class SelectionMonitor {
         
         // 如果选中的文本与之前不同
         // If selected text is different from before
-        if text != currentSelectedText && !text.isEmpty {
+        let shouldNotify: Bool
+        if let previousText = currentSelectedText,
+           let previousBounds = currentSelectionBounds {
+            shouldNotify = (previousText != text) || !previousBounds.isApproximatelyEqual(to: bounds, tolerance: 2.0)
+        } else {
+            shouldNotify = true
+        }
+        
+        if shouldNotify {
             currentSelectedText = text
+            currentSelectionBounds = bounds
             delegate?.didDetectTextSelection(text: text, bounds: bounds)
         }
     }
@@ -146,7 +173,7 @@ class SelectionMonitor {
     /// 通过辅助功能 API 获取选中的文本
     /// Get selected text via Accessibility API
     /// - Returns: 返回选中的文本和边界 / Returns selected text and bounds
-    private func getSelectedTextViaAccessibility() -> (String, CGRect)? {
+    private func getSelectedTextViaAccessibility() -> (String, CGRect, SelectionCoordinateSpace)? {
         // 获取系统范围内的焦点元素
         // Get system-wide focused element
         let systemWideElement = AXUIElementCreateSystemWide()
@@ -179,8 +206,28 @@ class SelectionMonitor {
         AXUIElementCopyAttributeValue(element as! AXUIElement, kAXPositionAttribute as CFString, &position)
         AXUIElementCopyAttributeValue(element as! AXUIElement, kAXSizeAttribute as CFString, &size)
         
+        let axElement = element as! AXUIElement
         var bounds = CGRect.zero
-        if let position = position, let size = size {
+        var coordinateSpace: SelectionCoordinateSpace = .accessibility
+        if let rangeValue = boundsValue {
+            let axRangeValue = rangeValue as! AXValue
+            if AXValueGetType(axRangeValue) == .cfRange,
+               let preciseBounds = boundsForRange(axRangeValue, in: axElement) {
+                bounds = preciseBounds
+            } else if let position = position, let size = size {
+                var point = CGPoint.zero
+                var cgSize = CGSize.zero
+                AXValueGetValue(position as! AXValue, .cgPoint, &point)
+                AXValueGetValue(size as! AXValue, .cgSize, &cgSize)
+                bounds = CGRect(origin: point, size: cgSize)
+            } else {
+                // 如果无法获取精确位置，使用鼠标当前位置
+                // If precise position is unavailable, use current mouse position
+                let mouseLocation = NSEvent.mouseLocation
+                bounds = CGRect(x: mouseLocation.x, y: mouseLocation.y, width: 100, height: 20)
+                coordinateSpace = .appKit
+            }
+        } else if let position = position, let size = size {
             var point = CGPoint.zero
             var cgSize = CGSize.zero
             AXValueGetValue(position as! AXValue, .cgPoint, &point)
@@ -191,8 +238,82 @@ class SelectionMonitor {
             // If precise position is unavailable, use current mouse position
             let mouseLocation = NSEvent.mouseLocation
             bounds = CGRect(x: mouseLocation.x, y: mouseLocation.y, width: 100, height: 20)
+            coordinateSpace = .appKit
         }
-        
-        return (text, bounds)
+        return (text, bounds, coordinateSpace)
+    }
+    
+    /// 获取选区的精确边界
+    /// Retrieve the precise bounds for the selected range when available
+    private func boundsForRange(_ rangeValue: AXValue, in element: AXUIElement) -> CGRect? {
+        var range = CFRange()
+        guard AXValueGetValue(rangeValue, .cfRange, &range) else {
+            return nil
+        }
+        var mutableRange = range
+        guard let rangeParameter = AXValueCreate(.cfRange, &mutableRange) else {
+            return nil
+        }
+        var result: CFTypeRef?
+        let status = AXUIElementCopyParameterizedAttributeValue(
+            element,
+            kAXBoundsForRangeParameterizedAttribute as CFString,
+            rangeParameter,
+            &result
+        )
+        guard status == .success,
+              let rectAny = result else {
+            return nil
+        }
+        let rectValue = rectAny as! AXValue
+        guard AXValueGetType(rectValue) == .cgRect else {
+            return nil
+        }
+        var rect = CGRect.zero
+        AXValueGetValue(rectValue, .cgRect, &rect)
+        return rect
+    }
+}
+
+// MARK: - CGRect Helpers
+
+private enum SelectionCoordinateSpace {
+    case accessibility
+    case appKit
+}
+
+private extension CGRect {
+    /// 判断两个 CGRect 是否在给定误差范围内相等
+    /// Check if two CGRect values are approximately equal within a tolerance
+    func isApproximatelyEqual(to other: CGRect, tolerance: CGFloat) -> Bool {
+        return abs(origin.x - other.origin.x) <= tolerance &&
+            abs(origin.y - other.origin.y) <= tolerance &&
+            abs(size.width - other.size.width) <= tolerance &&
+            abs(size.height - other.size.height) <= tolerance
+    }
+}
+
+private extension SelectionMonitor {
+    func normalizeBounds(_ bounds: CGRect, from coordinateSpace: SelectionCoordinateSpace) -> CGRect {
+        switch coordinateSpace {
+        case .appKit:
+            return bounds
+        case .accessibility:
+            guard let screen = screenContaining(bounds) else {
+                return bounds
+            }
+            let convertedY = screen.frame.maxY - (bounds.origin.y + bounds.height)
+            return CGRect(x: bounds.origin.x, y: convertedY, width: bounds.width, height: bounds.height)
+        }
+    }
+    
+    func screenContaining(_ rect: CGRect) -> NSScreen? {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        for screen in NSScreen.screens {
+            if screen.frame.contains(center) {
+                return screen
+            }
+        }
+        return NSScreen.main
     }
 }

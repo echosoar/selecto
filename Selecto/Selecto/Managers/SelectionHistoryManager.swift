@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import CoreGraphics
 
 /// 选择历史项
 /// Selection history item
@@ -23,10 +24,40 @@ struct SelectionHistory: Identifiable, Codable {
     /// Timestamp
     let timestamp: Date
     
-    init(text: String) {
-        self.id = UUID()
+    /// 选区边界
+    /// Selection bounds
+    let bounds: CGRect
+    
+    init(id: UUID = UUID(), text: String, timestamp: Date = Date(), bounds: CGRect) {
+        self.id = id
         self.text = text
-        self.timestamp = Date()
+        self.timestamp = timestamp
+        self.bounds = bounds
+    }
+    
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case text
+        case timestamp
+        case bounds
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        text = try container.decode(String.self, forKey: .text)
+        timestamp = try container.decodeIfPresent(Date.self, forKey: .timestamp) ?? Date()
+        bounds = try container.decodeIfPresent(CGRect.self, forKey: .bounds) ?? .zero
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(text, forKey: .text)
+        try container.encode(timestamp, forKey: .timestamp)
+        if bounds != .zero {
+            try container.encode(bounds, forKey: .bounds)
+        }
     }
 }
 
@@ -88,7 +119,7 @@ class SelectionHistoryManager {
     /// 添加选择记录
     /// Add selection record
     /// - Parameter text: 选中的文本 / Selected text
-    func addSelection(_ text: String) {
+    func addSelection(_ text: String, bounds: CGRect) {
         guard isEnabled else { return }
         
         // 过滤掉空白文本和太短的文本
@@ -99,12 +130,14 @@ class SelectionHistoryManager {
         // 检查是否与最近的记录重复
         // Check if duplicate with recent record
         if let lastHistory = history.first, lastHistory.text == trimmedText {
-            return
+            if lastHistory.bounds.isApproximatelyEqual(to: bounds, tolerance: 1.0) {
+                return
+            }
         }
         
         // 添加新记录到开头
         // Add new record to the beginning
-        let newHistory = SelectionHistory(text: trimmedText)
+        let newHistory = SelectionHistory(text: trimmedText, bounds: bounds)
         history.insert(newHistory, at: 0)
         
         // 保持最多10条记录
@@ -172,5 +205,14 @@ class SelectionHistoryManager {
         } catch {
             print("保存历史记录失败 (Failed to save history): \(error)")
         }
+    }
+}
+
+private extension CGRect {
+    func isApproximatelyEqual(to other: CGRect, tolerance: CGFloat) -> Bool {
+        abs(origin.x - other.origin.x) <= tolerance &&
+        abs(origin.y - other.origin.y) <= tolerance &&
+        abs(size.width - other.size.width) <= tolerance &&
+        abs(size.height - other.size.height) <= tolerance
     }
 }

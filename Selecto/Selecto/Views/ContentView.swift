@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 /// 主内容视图
 /// Main content view
@@ -420,6 +421,9 @@ struct HistoryRow: View {
     let history: SelectionHistory
     
     var body: some View {
+        let bounds = history.bounds
+        let hasBounds = !bounds.isEmpty
+        let topLeft = topLeftPoint(for: bounds)
         VStack(alignment: .leading, spacing: 8) {
             // 文本内容
             // Text content
@@ -450,6 +454,25 @@ struct HistoryRow: View {
                 .buttonStyle(.borderless)
             }
             .foregroundColor(.secondary)
+            
+            if hasBounds {
+                HStack(spacing: 16) {
+                    Label {
+                        Text("x: \(format(topLeft.x))  y: \(format(topLeft.y))")
+                    } icon: {
+                        Image(systemName: "location.north.west")
+                    }
+                    
+                    Label {
+                        Text("w: \(format(bounds.width))  h: \(format(bounds.height))")
+                    } icon: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    }
+                }
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .textSelection(.enabled)
+            }
         }
         .padding(.vertical, 4)
     }
@@ -460,6 +483,22 @@ struct HistoryRow: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
         return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+private extension HistoryRow {
+    func topLeftPoint(for rect: CGRect) -> CGPoint {
+        guard !rect.isEmpty else { return .zero }
+        if let screen = NSScreen.screens.first(where: { $0.frame.contains(rect.origin) }) {
+            let screenTop = screen.frame.maxY
+            let topLeftY = screenTop - (rect.origin.y + rect.height)
+            return CGPoint(x: rect.minX, y: topLeftY)
+        }
+        return CGPoint(x: rect.minX, y: rect.maxY)
+    }
+    
+    func format(_ value: CGFloat) -> String {
+        String(format: "%.0f", value)
     }
 }
 

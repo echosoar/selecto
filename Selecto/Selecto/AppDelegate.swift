@@ -150,7 +150,7 @@ extension AppDelegate: SelectionMonitorDelegate {
     func didDetectTextSelection(text: String, bounds: CGRect) {
         // 记录选择的文本
         // Log selected text
-        SelectionHistoryManager.shared.addSelection(text)
+    SelectionHistoryManager.shared.addSelection(text, bounds: bounds)
         
         // 检查是否符合用户配置的条件
         // Check if matches user-configured conditions
