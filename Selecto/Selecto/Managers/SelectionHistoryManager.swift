@@ -43,7 +43,7 @@ class SelectionHistoryManager {
     static let shared = SelectionHistoryManager()
     
     private init() {
-        loadSettings()
+        self.isEnabled = UserDefaults.standard.object(forKey: "SelectionHistoryEnabled") as? Bool ?? true
         loadHistory()
     }
     

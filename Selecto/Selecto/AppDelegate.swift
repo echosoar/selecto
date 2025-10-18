@@ -25,11 +25,12 @@ struct SelectoApp: App {
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("关于 Selecto (About)") {
+                    let credits = NSMutableAttributedString(string: "一个强大的 macOS 划词增强工具\nA powerful macOS text selection enhancement tool")
+                    credits.append(NSAttributedString(string: "\n\n© 2024 Gao Yang"))
                     NSApp.orderFrontStandardAboutPanel(options: [
                         .applicationName: "Selecto",
                         .applicationVersion: "1.0",
-                        .credits: NSAttributedString(string: "一个强大的 macOS 划词增强工具\nA powerful macOS text selection enhancement tool"),
-                        .copyright: "Copyright © 2024 Gao Yang"
+                        .credits: credits
                     ])
                 }
             }
