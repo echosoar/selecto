@@ -10,19 +10,7 @@ import Foundation
 
 /// 动作类型枚举
 /// Action type enumeration
-enum ActionType: String, Codable, CaseIterable {
-    /// 复制到剪贴板
-    /// Copy to clipboard
-    case copyToClipboard = "copy"
-    
-    /// 搜索
-    /// Search
-    case search = "search"
-    
-    /// 翻译
-    /// Translate
-    case translate = "translate"
-    
+enum ActionType: String, CaseIterable, Codable {
     /// 打开网址
     /// Open URL
     case openURL = "openURL"
@@ -31,27 +19,28 @@ enum ActionType: String, Codable, CaseIterable {
     /// Execute script
     case executeScript = "script"
     
-    /// 自定义
-    /// Custom
-    case custom = "custom"
-    
     /// 显示名称
     /// Display name
     var displayName: String {
         switch self {
-        case .copyToClipboard:
-            return "复制"
-        case .search:
-            return "搜索"
-        case .translate:
-            return "翻译"
         case .openURL:
             return "打开链接"
         case .executeScript:
             return "运行脚本"
-        case .custom:
-            return "自定义"
         }
+    }
+}
+
+extension ActionType {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = ActionType(rawValue: rawValue) ?? .openURL
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
     }
 }
 
@@ -160,24 +149,11 @@ struct ActionItem: Codable, Identifiable {
     static func defaultActions() -> [ActionItem] {
         return [
             ActionItem(
-                name: "copy",
-                displayName: "复制",
-                type: .copyToClipboard,
-                sortOrder: 0
-            ),
-            ActionItem(
                 name: "search_google",
-                displayName: "搜索",
-                type: .search,
+                displayName: "打开 Google 搜索",
+                type: .openURL,
                 parameters: ["url": "https://www.google.com/search?q={text}"],
-                sortOrder: 1
-            ),
-            ActionItem(
-                name: "translate",
-                displayName: "翻译",
-                type: .translate,
-                parameters: ["url": "https://translate.google.com/?text={text}"],
-                sortOrder: 2
+                sortOrder: 0
             )
         ]
     }

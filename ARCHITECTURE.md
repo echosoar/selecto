@@ -135,16 +135,12 @@ func applicationWillTerminate(_ aNotification: Notification)
 **职责：**
 - 执行不同类型的动作
 - 处理 URL 模板替换
-- 执行系统操作（复制、打开 URL 等）
-- 显示执行结果通知
+- 运行脚本并传递上下文
+- 将执行状态回传给工具栏
 
 **支持的动作类型：**
-- 复制到剪贴板
-- 搜索
-- 翻译
 - 打开 URL
 - 执行脚本
-- 自定义动作
 
 #### 7. PermissionManager
 
@@ -189,10 +185,7 @@ ToolbarWindowController 显示工具栏
 用户点击动作按钮
     │
     ▼
-ActionExecutor 执行动作
-    │
-    ▼
-显示结果（复制、打开 URL 等）
+ActionExecutor 执行动作（打开链接或运行脚本）
 ```
 
 #### 配置保存流程

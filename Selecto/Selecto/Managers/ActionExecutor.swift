@@ -8,6 +8,14 @@
 
 import Cocoa
 
+/// 动作执行结果
+/// Action execution result
+enum ActionExecutionResult {
+    case urlOpened
+    case scriptOutput([String])
+    case failure(String)
+}
+
 /// 动作执行器
 /// Action executor
 /// 负责执行各种类型的动作
@@ -29,76 +37,19 @@ class ActionExecutor {
     /// - Parameters:
     ///   - action: 要执行的动作 / Action to execute
     ///   - text: 选中的文本 / Selected text
-    func execute(_ action: ActionItem, with text: String) {
+    func execute(_ action: ActionItem, with text: String, completion: @escaping (ActionExecutionResult) -> Void) {
         switch action.type {
-        case .copyToClipboard:
-            copyToClipboard(text)
-            
-        case .search:
-            performSearch(text, parameters: action.parameters)
-            
-        case .translate:
-            performTranslate(text, parameters: action.parameters)
-            
         case .openURL:
             openURL(text, parameters: action.parameters)
-            
+            DispatchQueue.main.async {
+                completion(.urlOpened)
+            }
         case .executeScript:
-            executeScript(text, parameters: action.parameters)
-            
-        case .custom:
-            performCustomAction(text, parameters: action.parameters)
+            executeScript(text, parameters: action.parameters, completion: completion)
         }
     }
     
     // MARK: - Private Methods
-    
-    /// 复制到剪贴板
-    /// Copy to clipboard
-    /// - Parameter text: 要复制的文本 / Text to copy
-    private func copyToClipboard(_ text: String) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-        
-        // 显示通知
-        // Show notification
-        showNotification(title: "已复制 (Copied)", message: text)
-    }
-    
-    /// 执行搜索
-    /// Perform search
-    /// - Parameters:
-    ///   - text: 搜索文本 / Search text
-    ///   - parameters: 参数 / Parameters
-    private func performSearch(_ text: String, parameters: [String: String]) {
-        guard let urlTemplate = parameters["url"] else { return }
-        
-        // 替换模板中的占位符
-        // Replace placeholders in template
-        let encodedText = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? text
-        let urlString = urlTemplate.replacingOccurrences(of: "{text}", with: encodedText)
-        
-        if let url = URL(string: urlString) {
-            NSWorkspace.shared.open(url)
-        }
-    }
-    
-    /// 执行翻译
-    /// Perform translation
-    /// - Parameters:
-    ///   - text: 要翻译的文本 / Text to translate
-    ///   - parameters: 参数 / Parameters
-    private func performTranslate(_ text: String, parameters: [String: String]) {
-        guard let urlTemplate = parameters["url"] else { return }
-        
-        let encodedText = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? text
-        let urlString = urlTemplate.replacingOccurrences(of: "{text}", with: encodedText)
-        
-        if let url = URL(string: urlString) {
-            NSWorkspace.shared.open(url)
-        }
-    }
     
     /// 打开 URL
     /// Open URL
@@ -130,45 +81,112 @@ class ActionExecutor {
     /// - Parameters:
     ///   - text: 输入文本 / Input text
     ///   - parameters: 参数 / Parameters
-    private func executeScript(_ text: String, parameters: [String: String]) {
-        guard let scriptPath = parameters["path"] else { return }
+    private func executeScript(_ text: String, parameters: [String: String], completion: @escaping (ActionExecutionResult) -> Void) {
+        if let script = parameters["script"], !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            do {
+                let scriptURL = try prepareTemporaryScript(from: script, with: text)
+                runScript(at: scriptURL, inputText: text, deleteAfterRun: true, completion: completion)
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure("脚本保存失败: \(error.localizedDescription)"))
+                }
+            }
+            return
+        }
         
-        // 创建进程执行脚本
-        // Create process to execute script
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: scriptPath)
-        process.arguments = [text]
+        if let path = parameters["path"], !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let fileURL = URL(fileURLWithPath: path)
+            runScript(at: fileURL, inputText: text, deleteAfterRun: false, completion: completion)
+            return
+        }
         
-        do {
-            try process.run()
-        } catch {
-            print("执行脚本失败 (Failed to execute script): \(error)")
-            showNotification(title: "错误 (Error)", message: "无法执行脚本 (Cannot execute script)")
+        DispatchQueue.main.async {
+            completion(.failure("未配置脚本"))
         }
     }
     
-    /// 执行自定义动作
-    /// Perform custom action
-    /// - Parameters:
-    ///   - text: 输入文本 / Input text
-    ///   - parameters: 参数 / Parameters
-    private func performCustomAction(_ text: String, parameters: [String: String]) {
-        // 自定义动作的实现可以根据需要扩展
-        // Custom action implementation can be extended as needed
-        print("执行自定义动作 (Executing custom action) with text: \(text)")
+    private func prepareTemporaryScript(from script: String, with text: String) throws -> URL {
+        let sanitizedText = shellEscaped(text)
+        var processedScript = script.replacingOccurrences(of: "{text}", with: sanitizedText)
+        if !processedScript.hasSuffix("\n") {
+            processedScript.append("\n")
+        }
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let fileURL = tempDirectory.appendingPathComponent("selecto-script-\(UUID().uuidString).sh")
+        try processedScript.write(to: fileURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fileURL.path)
+        return fileURL
     }
     
-    /// 显示通知
-    /// Show notification
-    /// - Parameters:
-    ///   - title: 标题 / Title
-    ///   - message: 消息 / Message
-    private func showNotification(title: String, message: String) {
-        let notification = NSUserNotification()
-        notification.title = title
-        notification.informativeText = message
-        notification.soundName = NSUserNotificationDefaultSoundName
+    private func runScript(at url: URL, inputText: String, deleteAfterRun: Bool, completion: @escaping (ActionExecutionResult) -> Void) {
+        let process = Process()
+        if deleteAfterRun {
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = [url.path, inputText]
+        } else {
+            if url.pathExtension.isEmpty {
+                process.executableURL = url
+                process.arguments = [inputText]
+            } else {
+                process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+                process.arguments = [url.path, inputText]
+            }
+        }
         
-        NSUserNotificationCenter.default.deliver(notification)
+        var environment = ProcessInfo.processInfo.environment
+        environment["SELECTO_TEXT"] = inputText
+        process.environment = environment
+        
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+        
+        process.terminationHandler = { proc in
+            if deleteAfterRun {
+                try? FileManager.default.removeItem(at: url)
+            }
+            let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            stdoutPipe.fileHandleForReading.closeFile()
+            stderrPipe.fileHandleForReading.closeFile()
+            let outputString = String(data: stdoutData, encoding: .utf8) ?? ""
+            let errorString = String(data: stderrData, encoding: .utf8) ?? ""
+            let exitCode = proc.terminationStatus
+            DispatchQueue.main.async {
+                if exitCode == 0 {
+                    let lines = outputString
+                        .components(separatedBy: CharacterSet.newlines)
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                    completion(.scriptOutput(lines))
+                } else {
+                    let message = errorString.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if message.isEmpty {
+                        completion(.failure("脚本执行失败，退出码 \(exitCode)"))
+                    } else {
+                        completion(.failure(message))
+                    }
+                }
+            }
+        }
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try process.run()
+            } catch {
+                if deleteAfterRun {
+                    try? FileManager.default.removeItem(at: url)
+                }
+                DispatchQueue.main.async {
+                    completion(.failure("脚本启动失败: \(error.localizedDescription)"))
+                }
+            }
+        }
+    }
+    
+    private func shellEscaped(_ text: String) -> String {
+        let escaped = text.replacingOccurrences(of: "'", with: "'\"'\"'")
+        return "'\(escaped)'"
     }
 }

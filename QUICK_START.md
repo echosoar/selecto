@@ -25,7 +25,7 @@ open Selecto/Selecto.xcodeproj
 1. Look for the 📝 icon in your menu bar
 2. Select any text in any application
 3. A toolbar will appear above your selection
-4. Click buttons to perform actions (Copy, Search, Translate)
+4. Click buttons to open a link or run your custom script
 
 ## 🛠️ For Developers | 开发者指南
 
@@ -77,31 +77,11 @@ User clicks button
 ActionExecutor.execute(action, with: text)
 ```
 
-### Adding a New Action Type | 添加新动作类型
+### Action Types Overview | 动作类型概览
 
-1. **Add to enum** in `ActionItem.swift`:
-```swift
-enum ActionType: String, Codable {
-    case myNewAction = "myAction"
-}
-```
-
-2. **Implement execution** in `ActionExecutor.swift`:
-```swift
-func execute(_ action: ActionItem, with text: String) {
-    switch action.type {
-    case .myNewAction:
-        performMyAction(text, parameters: action.parameters)
-    // ...
-    }
-}
-
-private func performMyAction(_ text: String, parameters: [String: String]) {
-    // Your implementation here
-}
-```
-
-3. **Add UI** in `SettingsView.swift` if needed
+- **Open Link | 打开链接** — Configure URL templates with the `{text}` placeholder
+- **Run Script | 运行脚本** — Write shell scripts inline; the selected text is available via `{text}`, `$1`, and `SELECTO_TEXT`
+- To introduce additional action types, extend `ActionType`, update the settings UI, and provide execution logic in `ActionExecutor`
 
 ### Testing | 测试
 
@@ -148,9 +128,8 @@ Manual testing checklist:
 ## 🎯 Next Steps | 下一步
 
 1. **For Users:**
-   - Customize actions in Settings
-   - Add your own search engines
-   - Create custom actions with scripts
+    - Customize URL templates in Open Link actions
+    - Author inline shell scripts to automate repetitive tasks
 
 2. **For Developers:**
    - Add unit tests
@@ -162,6 +141,7 @@ Manual testing checklist:
 
 - Use regex `^https?://` to create actions that only trigger for URLs
 - The `{text}` placeholder in URL templates gets replaced with selected text
+- Inline scripts can read the text from `$1` or the `SELECTO_TEXT` environment variable
 - Actions are matched in order, so put more specific ones first
 - You can disable actions temporarily without deleting them
 

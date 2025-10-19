@@ -95,23 +95,19 @@ selecto/
 **Files:** `ActionItem.swift`, `ActionManager.swift`, `ActionExecutor.swift`
 
 **Features:**
-- Support for multiple action types:
-  - Copy to clipboard
-  - Search (customizable search engine)
-  - Translate (customizable translation service)
-  - Open URL
-  - Execute script
-  - Custom actions
+- Support for two streamlined action types:
+   - Open URL (configurable templates with `{text}` placeholder)
+   - Execute script (inline shell editor with `{text}`, `$1`, and `SELECTO_TEXT`)
 - Regular expression matching for conditional triggering
-- URL template support with `{text}` placeholder
-- Persistent storage in JSON format
-- CRUD operations for managing actions
+- Persistent storage in JSON format with CRUD operations
+- Automatic fallback to safe defaults when loading legacy action types
+- Temporary script file generation and cleanup for inline execution
 
 **Key Technologies:**
 - Codable protocol for serialization
 - NSRegularExpression for pattern matching
 - FileManager for persistence
-- NSPasteboard for clipboard operations
+- Process & Pipe for shell execution
 - NSWorkspace for opening URLs
 
 ---

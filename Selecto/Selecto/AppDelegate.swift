@@ -171,7 +171,7 @@ extension AppDelegate: SelectionMonitorDelegate {
     func didCancelTextSelection() {
         // 隐藏工具栏
         // Hide toolbar
-        toolbarController?.hideToolbar()
+        toolbarController?.hideToolbar(force: true)
     }
 }
 

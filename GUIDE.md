@@ -82,7 +82,7 @@
    **基本信息：**
    - 名称：内部使用的动作标识符
    - 显示名称：在工具栏上显示的名称
-   - 类型：选择动作类型（复制、搜索、翻译等）
+   - 类型：仅支持“打开链接”与“运行脚本”
    - 启用：是否启用此动作
 
    **匹配条件：**
@@ -91,33 +91,34 @@
    - 留空表示匹配所有文本
 
    **参数：**
-   - 对于搜索、翻译等类型，需要配置 URL 模板
-   - 使用 `{text}` 作为占位符，会被替换为选中的文本
+   - “打开链接”：配置 URL 模板，使用 `{text}` 作为占位符
+   - “运行脚本”：在输入框中直接编写 Shell 脚本，可使用 `{text}` 或 `SELECTO_TEXT`
    - 例如：`https://www.google.com/search?q={text}`
 
 #### 默认动作
 
-应用自带三个默认动作：
+应用预设了一个默认动作：
 
-1. **复制 (Copy)**
-   - 将选中的文本复制到剪贴板
-
-2. **搜索 (Search)**
-   - 使用 Google 搜索选中的文本
-
-3. **翻译 (Translate)**
-   - 使用 Google 翻译翻译选中的文本
+1. **打开 Google 搜索**
+   - 使用 URL 模板在浏览器中搜索选中的文本
 
 ### 高级配置
 
-#### 自定义搜索引擎
+#### 自定义链接动作
 
-在设置中编辑"搜索"动作，修改 URL 模板：
+在设置中编辑“打开链接”动作，修改 URL 模板：
 
 - **Google**: `https://www.google.com/search?q={text}`
 - **Bing**: `https://www.bing.com/search?q={text}`
 - **DuckDuckGo**: `https://duckduckgo.com/?q={text}`
 - **百度**: `https://www.baidu.com/s?wd={text}`
+
+#### 运行脚本小贴士
+
+- 环境变量 `SELECTO_TEXT` 自动包含选中的原始文本
+- `{text}` 占位符会在执行前被替换为安全转义后的文本
+- 可以在脚本中通过 `$1` 获取第一个参数（同样为选中文本）
+- 如果脚本需要第三方命令，请确认已在系统 `PATH` 中
 
 #### 正则表达式示例
 
@@ -136,10 +137,10 @@
 3. 在设置中检查动作是否启用
 4. 检查匹配条件是否过于严格
 
-#### 无法复制到剪贴板
+#### 脚本没有执行
 
-- 检查应用是否有剪贴板访问权限
-- 某些应用可能禁止外部访问剪贴板
+- 确认脚本具备可执行权限或通过临时文件运行
+- 检查脚本是否依赖额外的环境变量或路径
 
 #### 性能问题
 
@@ -227,7 +228,7 @@ On first run, the app will request necessary permissions:
    **Basic Information:**
    - Name: Internal action identifier
    - Display Name: Name shown on the toolbar
-   - Type: Select action type (copy, search, translate, etc.)
+   - Type: Choose between “Open Link” and “Run Script”
    - Enabled: Whether this action is enabled
 
    **Match Condition:**
@@ -236,33 +237,34 @@ On first run, the app will request necessary permissions:
    - Leave empty to match all text
 
    **Parameters:**
-   - For search, translate, etc., configure URL template
-   - Use `{text}` as placeholder, will be replaced with selected text
+   - “Open Link”: Configure a URL template using `{text}` as placeholder
+   - “Run Script”: Write shell scripts directly; `{text}` and `SELECTO_TEXT` provide the selected text
    - Example: `https://www.google.com/search?q={text}`
 
 #### Default Actions
 
-The app comes with three default actions:
+The app ships with one default action:
 
-1. **Copy**
-   - Copy selected text to clipboard
-
-2. **Search**
-   - Search selected text with Google
-
-3. **Translate**
-   - Translate selected text with Google Translate
+1. **Open Google Search**
+   - Launches a browser search using the selected text
 
 ### Advanced Configuration
 
-#### Custom Search Engines
+#### Custom Link Templates
 
-Edit the "Search" action in settings and modify the URL template:
+Edit an “Open Link” action in settings and modify the URL template:
 
 - **Google**: `https://www.google.com/search?q={text}`
 - **Bing**: `https://www.bing.com/search?q={text}`
 - **DuckDuckGo**: `https://duckduckgo.com/?q={text}`
 - **Baidu**: `https://www.baidu.com/s?wd={text}`
+
+#### Script Tips
+
+- The environment variable `SELECTO_TEXT` always contains the selected text
+- The `{text}` placeholder is replaced with a shell-escaped version before execution
+- Your script receives the selected text as the first argument (`$1`)
+- Ensure external binaries used in the script are available on the system `PATH`
 
 #### Regular Expression Examples
 
@@ -281,10 +283,10 @@ Edit the "Search" action in settings and modify the URL template:
 3. Check if actions are enabled in settings
 4. Check if match conditions are too restrictive
 
-#### Cannot copy to clipboard
+#### Script fails to execute
 
-- Check if the app has clipboard access permission
-- Some apps may block external clipboard access
+- Ensure the script is executable or rely on the inline script runner
+- Verify required dependencies or environment variables are available
 
 #### Performance issues
 

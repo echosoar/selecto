@@ -667,16 +667,26 @@ struct ActionDetailView: View {
                     }
                     
                     // 参数
-                    if !action.parameters.isEmpty {
-                        GroupBox(label: Text("参数")) {
-                            VStack(alignment: .leading, spacing: 5) {
-                                ForEach(Array(action.parameters.keys.sorted()), id: \.self) { key in
-                                    if let value = action.parameters[key] {
-                                        InfoRow(label: key, value: value)
-                                    }
-                                }
+                    if action.type == .openURL, let url = action.parameters["url"], !url.isEmpty {
+                        GroupBox(label: Text("URL 模板")) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(url)
+                                    .font(.system(.body, design: .monospaced))
+                                    .textSelection(.enabled)
                             }
                             .padding()
+                        }
+                    } else if action.type == .executeScript, let script = action.parameters["script"], !script.isEmpty {
+                        GroupBox(label: Text("脚本内容")) {
+                            ScrollView {
+                                Text(script)
+                                    .font(.system(.body, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .textSelection(.enabled)
+                            }
+                            .frame(minHeight: 120)
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
                         }
                     }
 
@@ -748,6 +758,7 @@ struct ActionEditorView: View {
     @State private var isEnabled: Bool
     @State private var matchPattern: String
     @State private var urlParameter: String
+    @State private var scriptContent: String
     
     init(action: ActionItem?, onSave: @escaping (ActionItem) -> Void) {
         self.action = action
@@ -755,10 +766,11 @@ struct ActionEditorView: View {
         
         _name = State(initialValue: action?.name ?? "")
         _displayName = State(initialValue: action?.displayName ?? "")
-        _type = State(initialValue: action?.type ?? .copyToClipboard)
+        _type = State(initialValue: action?.type ?? .openURL)
         _isEnabled = State(initialValue: action?.isEnabled ?? true)
         _matchPattern = State(initialValue: action?.matchPattern ?? "")
         _urlParameter = State(initialValue: action?.parameters["url"] ?? "")
+        _scriptContent = State(initialValue: action?.parameters["script"] ?? "")
     }
     
     var body: some View {
@@ -785,11 +797,24 @@ struct ActionEditorView: View {
             }
             
             Section(header: Text("参数")) {
-                if type == .search || type == .translate || type == .openURL {
+                if type == .openURL {
                     TextField("URL 模板", text: $urlParameter)
                     Text("使用 {text} 作为占位符")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                } else if type == .executeScript {
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextEditor(text: $scriptContent)
+                            .font(.system(.body, design: .monospaced))
+                            .frame(minHeight: 160)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.secondary.opacity(0.3))
+                            )
+                        Text("脚本将在 /bin/zsh 下执行，可使用 {text} 或 SELECTO_TEXT 环境变量获取选中文本")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             
@@ -813,8 +838,15 @@ struct ActionEditorView: View {
     
     private func saveAction() {
         var parameters: [String: String] = [:]
-        if !urlParameter.isEmpty {
-            parameters["url"] = urlParameter
+        switch type {
+        case .openURL:
+            if !urlParameter.isEmpty {
+                parameters["url"] = urlParameter
+            }
+        case .executeScript:
+            if !scriptContent.isEmpty {
+                parameters["script"] = scriptContent
+            }
         }
         
         let newAction = ActionItem(

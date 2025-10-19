@@ -28,6 +28,30 @@ class ToolbarWindowController: NSWindowController {
     /// Toolbar view
     private var toolbarView: ToolbarView?
     
+    /// 当前选区边界
+    /// Current selection bounds
+    private var currentSelectionBounds: CGRect?
+    
+    /// 自动隐藏定时器
+    /// Auto-hide timer
+    private var autoHideTimer: Timer?
+    
+    /// 是否禁用自动隐藏
+    /// Whether auto-hide is disabled due to user interaction
+    private var autoHideDisabled = false
+    
+    /// 记录最后一次点击是否发生在工具栏内部
+    /// Track whether the last click occurred inside the toolbar window
+    private var lastClickWasInsideToolbar = false
+    
+    /// 全局点击监视器
+    /// Global click monitor
+    private var globalClickMonitor: Any?
+    
+    /// 本地点击监视器
+    /// Local click monitor
+    private var localClickMonitor: Any?
+    
     // MARK: - Initialization
     
     init() {
@@ -71,55 +95,28 @@ class ToolbarWindowController: NSWindowController {
     func showToolbar(with actions: [ActionItem], at bounds: CGRect, selectedText text: String) {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty, !actions.isEmpty else {
-            hideToolbar()
+            hideToolbar(force: true)
             return
         }
         
-        currentActions = actions
-        selectedText = text
+    currentActions = actions
+    selectedText = text
+    currentSelectionBounds = bounds
+    lastClickWasInsideToolbar = false
+    autoHideDisabled = false
+    stopOutsideClickMonitoring()
+    startOutsideClickMonitoring()
         
         // 更新工具栏内容
         // Update toolbar content
         toolbarView?.updateActions(actions, selectedText: text)
         toolbarView?.layoutSubtreeIfNeeded()
         
-        let preferredSize = toolbarView?.fittingSize ?? NSSize(width: 200, height: 44)
-        let toolbarWidth = min(max(preferredSize.width + 20, 180), 500)
-        let toolbarHeight = max(preferredSize.height + 20, 44)
-        
-        guard let screen = screenForSelection(bounds) ?? NSScreen.main else {
+        guard let frame = frameForCurrentContext(preferredSize: toolbarView?.fittingSize ?? NSSize(width: 200, height: 44)) else {
             window?.orderOut(nil)
             return
         }
-        let screenFrame = screen.visibleFrame
-        
-        let horizontalPadding: CGFloat = 10
-        var xPosition = bounds.midX - toolbarWidth / 2
-        xPosition = max(screenFrame.minX + horizontalPadding, xPosition)
-        xPosition = min(screenFrame.maxX - toolbarWidth - horizontalPadding, xPosition)
-        
-        let offsetBelowSelection: CGFloat = 16
-        var yPosition = bounds.minY - toolbarHeight - offsetBelowSelection
-        yPosition = min(yPosition, bounds.minY - toolbarHeight) // 确保在选区下方
-        let maximumGap: CGFloat = 30
-        let gap = bounds.minY - (yPosition + toolbarHeight)
-        if gap > maximumGap {
-            yPosition = bounds.minY - toolbarHeight - maximumGap
-        }
-        let verticalPadding: CGFloat = 10
-        yPosition = max(screenFrame.minY + verticalPadding, yPosition)
-        yPosition = min(screenFrame.maxY - toolbarHeight - verticalPadding, yPosition)
-        let finalGap = bounds.minY - (yPosition + toolbarHeight)
-        if finalGap > maximumGap {
-            let adjustedY = bounds.minY - toolbarHeight - maximumGap
-            yPosition = max(screenFrame.minY + verticalPadding,
-                            min(adjustedY, screenFrame.maxY - toolbarHeight - verticalPadding))
-        }
-        
-        window?.setFrame(
-            NSRect(x: xPosition, y: yPosition, width: toolbarWidth, height: toolbarHeight),
-            display: true
-        )
+        window?.setFrame(frame, display: true)
         
         // 显示窗口
         // Show window
@@ -132,17 +129,15 @@ class ToolbarWindowController: NSWindowController {
     
     /// 隐藏工具栏
     /// Hide toolbar
-    func hideToolbar() {
+    func hideToolbar(force: Bool = false) {
+        if lastClickWasInsideToolbar {
+            return
+        }
+        lastClickWasInsideToolbar = false
         window?.orderOut(nil)
-        autoHideTimer?.invalidate()
-        autoHideTimer = nil
+        cancelAutoHideTimer()
+        stopOutsideClickMonitoring()
     }
-    
-    // MARK: - Private Properties
-    
-    /// 自动隐藏定时器
-    /// Auto-hide timer
-    private var autoHideTimer: Timer?
     
     // MARK: - Private Methods
     
@@ -157,10 +152,25 @@ class ToolbarWindowController: NSWindowController {
     /// 设置自动隐藏定时器
     /// Setup auto-hide timer
     private func setupAutoHideTimer() {
-        autoHideTimer?.invalidate()
-        autoHideTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+        guard !autoHideDisabled else { return }
+        cancelAutoHideTimer()
+        autoHideTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
             self?.hideToolbar()
         }
+    }
+
+    /// 取消自动隐藏
+    /// Cancel auto-hide timer
+    private func cancelAutoHideTimer() {
+        autoHideTimer?.invalidate()
+        autoHideTimer = nil
+    }
+
+    /// 禁用自动隐藏直至下一次显示
+    /// Disable auto-hide until toolbar is shown again
+    private func disableAutoHide() {
+        autoHideDisabled = true
+        cancelAutoHideTimer()
     }
     
     /// 获取与选区匹配的屏幕
@@ -174,6 +184,96 @@ class ToolbarWindowController: NSWindowController {
         }
         return nil
     }
+    
+    private func frameForCurrentContext(preferredSize: NSSize) -> NSRect? {
+        guard let bounds = currentSelectionBounds,
+              let screen = screenForSelection(bounds) ?? NSScreen.main else {
+            return nil
+        }
+        let contentWidth = min(max(preferredSize.width + 20, 180), 500)
+        let contentHeight = max(preferredSize.height + 20, 44)
+        let screenFrame = screen.visibleFrame
+        let horizontalPadding: CGFloat = 10
+        var xPosition = bounds.midX - contentWidth / 2
+        xPosition = max(screenFrame.minX + horizontalPadding, xPosition)
+        xPosition = min(screenFrame.maxX - contentWidth - horizontalPadding, xPosition)
+        
+        let offsetBelowSelection: CGFloat = 16
+        var yPosition = bounds.minY - contentHeight - offsetBelowSelection
+        yPosition = min(yPosition, bounds.minY - contentHeight)
+        let maximumGap: CGFloat = 30
+        let gap = bounds.minY - (yPosition + contentHeight)
+        if gap > maximumGap {
+            yPosition = bounds.minY - contentHeight - maximumGap
+        }
+        let verticalPadding: CGFloat = 10
+        yPosition = max(screenFrame.minY + verticalPadding, yPosition)
+        yPosition = min(screenFrame.maxY - contentHeight - verticalPadding, yPosition)
+        let finalGap = bounds.minY - (yPosition + contentHeight)
+        if finalGap > maximumGap {
+            let adjustedY = bounds.minY - contentHeight - maximumGap
+            yPosition = max(
+                screenFrame.minY + verticalPadding,
+                min(adjustedY, screenFrame.maxY - contentHeight - verticalPadding)
+            )
+        }
+        return NSRect(x: xPosition, y: yPosition, width: contentWidth, height: contentHeight)
+    }
+    
+    private func resizeWindowToFitContent() {
+        guard let window = window,
+              let toolbarView = toolbarView,
+              let frame = frameForCurrentContext(preferredSize: toolbarView.fittingSize) else {
+            return
+        }
+        toolbarView.layoutSubtreeIfNeeded()
+        window.setFrame(frame, display: true, animate: true)
+    }
+
+    private func startOutsideClickMonitoring() {
+        guard globalClickMonitor == nil, localClickMonitor == nil else { return }
+        globalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
+            self?.handleMouseDown(event: event)
+        }
+        localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event -> NSEvent? in
+            guard let self = self else { return event }
+            self.handleMouseDown(event: event)
+            return event
+        }
+    }
+
+    private func stopOutsideClickMonitoring() {
+        if let monitor = globalClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalClickMonitor = nil
+        }
+        if let monitor = localClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            localClickMonitor = nil
+        }
+    }
+
+    private func handleMouseDown(event: NSEvent) {
+        guard let window = window else { return }
+
+        let inside = isEvent(event, inside: window)
+        lastClickWasInsideToolbar = inside
+        if inside {
+            disableAutoHide()
+        } else {
+            hideToolbar()
+        }
+    }
+
+    private func isEvent(_ event: NSEvent, inside window: NSWindow) -> Bool {
+        if let eventWindow = event.window, eventWindow == window {
+            return true
+        }
+        let globalPoint = event.window != nil
+            ? event.window!.convertToScreen(NSRect(origin: event.locationInWindow, size: .zero)).origin
+            : NSEvent.mouseLocation
+        return window.frame.contains(globalPoint)
+    }
 }
 
 // MARK: - ToolbarViewDelegate
@@ -184,10 +284,33 @@ extension ToolbarWindowController: ToolbarViewDelegate {
     func didClickAction(_ action: ActionItem, selectedText: String) {
         // 执行动作
         // Execute action
-        ActionExecutor.shared.execute(action, with: selectedText)
-        
-        // 隐藏工具栏
-        // Hide toolbar
-        hideToolbar()
+        disableAutoHide()
+        switch action.type {
+        case .openURL:
+            ActionExecutor.shared.execute(action, with: selectedText) { [weak self] result in
+                self?.handleExecutionResult(result)
+            }
+        case .executeScript:
+            toolbarView?.showLoading(message: "脚本运行中……")
+            resizeWindowToFitContent()
+            ActionExecutor.shared.execute(action, with: selectedText) { [weak self] result in
+                guard let self = self else { return }
+                self.toolbarView?.hideLoading()
+                self.handleExecutionResult(result)
+            }
+        }
+    }
+    
+    private func handleExecutionResult(_ result: ActionExecutionResult) {
+        switch result {
+        case .urlOpened:
+            break
+        case .scriptOutput(let lines):
+            toolbarView?.showScriptOutput(lines)
+            resizeWindowToFitContent()
+        case .failure(let message):
+            toolbarView?.showError(message)
+            resizeWindowToFitContent()
+        }
     }
 }

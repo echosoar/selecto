@@ -16,7 +16,8 @@ Selecto 是一个使用 Swift 开发的 macOS 应用程序，当用户选中一�
 - 🛠️ **浮动工具栏** - 在选中文本上方显示优雅的浮动工具栏
 - ⚙️ **高度可定制** - 通过设置界面配置各种动作和触发条件
 - 🔍 **正则表达式支持** - 使用正则表达式匹配特定文本模式
-- 📋 **丰富的内置动作** - 包括复制、搜索、翻译等功能
+- 📋 **精选动作类型** - 仅保留打开链接与运行脚本两种核心动作
+- 📝 **内置脚本编辑器** - 在设置中直接编写并保存 Shell 脚本
 - 🔒 **权限管理** - 自动检查并请求必要的系统权限
 - 🎨 **现代化 UI** - 使用 SwiftUI 构建的美观设置界面
 
@@ -24,12 +25,8 @@ Selecto 是一个使用 Swift 开发的 macOS 应用程序，当用户选中一�
 
 #### 内置动作类型
 
-1. **复制到剪贴板** - 快速复制选中的文本
-2. **搜索** - 使用 Google 或其他搜索引擎搜索文本
-3. **翻译** - 快速翻译选中的文本
-4. **打开 URL** - 将选中的文本作为 URL 打开
-5. **执行脚本** - 运行自定义脚本处理文本
-6. **自定义动作** - 创建完全自定义的动作
+1. **打开链接** - 基于 URL 模板在浏览器中打开选中文本
+2. **运行脚本** - 直接编写 Shell 脚本并在工具栏查看输出
 
 #### 高级功能
 
@@ -143,7 +140,8 @@ Selecto is a macOS application developed in Swift that automatically displays a 
 - 🛠️ **Floating Toolbar** - Displays an elegant floating toolbar above selected text
 - ⚙️ **Highly Customizable** - Configure various actions and trigger conditions through settings
 - 🔍 **Regular Expression Support** - Match specific text patterns using regex
-- 📋 **Rich Built-in Actions** - Including copy, search, translate, and more
+- 📋 **Curated Action Types** - Focused on opening links and running custom scripts
+- 📝 **Built-in Script Editor** - Author and store shell scripts right inside settings
 - 🔒 **Permission Management** - Automatically checks and requests necessary system permissions
 - 🎨 **Modern UI** - Beautiful settings interface built with SwiftUI
 
@@ -151,12 +149,8 @@ Selecto is a macOS application developed in Swift that automatically displays a 
 
 #### Built-in Action Types
 
-1. **Copy to Clipboard** - Quickly copy selected text
-2. **Search** - Search text using Google or other search engines
-3. **Translate** - Quickly translate selected text
-4. **Open URL** - Open selected text as a URL
-5. **Execute Script** - Run custom scripts to process text
-6. **Custom Action** - Create fully custom actions
+1. **Open Link** - Launch a browser using flexible URL templates
+2. **Run Script** - Author shell scripts inline and inspect output immediately
 
 #### Advanced Features
 
