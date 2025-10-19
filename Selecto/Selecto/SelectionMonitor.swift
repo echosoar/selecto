@@ -61,6 +61,22 @@ class SelectionMonitor {
     /// Timestamp of last mouse down event
     private var lastMouseDownDate: Date?
     
+    /// 鼠标按下时的位置
+    /// Mouse location on mouse down
+    private var lastMouseDownLocation: CGPoint?
+
+    /// 鼠标抬起时的位置
+    /// Mouse location on mouse up
+    private var lastMouseUpLocation: CGPoint?
+
+    /// 拖拽是否满足展示阈值
+    /// Whether the drag movement meets the display threshold
+    private var didMeetMovementThreshold = false
+
+    /// 鼠标拖拽最小展示阈值
+    /// Minimum movement threshold to display selection
+    private let movementThreshold: CGFloat = 10
+
     /// 是否忽略接下来的短时选择
     /// Flag to ignore next short-lived selection
     private var shouldIgnoreNextSelection = false
@@ -114,6 +130,9 @@ class SelectionMonitor {
     private func handleMouseDown(_ event: NSEvent) {
         isMouseSelecting = true
         lastMouseDownDate = Date()
+        lastMouseDownLocation = event.locationInWindow
+        lastMouseUpLocation = nil
+        didMeetMovementThreshold = false
         if currentSelectedText != nil {
             currentSelectedText = nil
             currentSelectionBounds = nil
@@ -125,6 +144,14 @@ class SelectionMonitor {
     /// Handle mouse up event
     private func handleMouseUp(_ event: NSEvent) {
         isMouseSelecting = false
+        lastMouseUpLocation = event.locationInWindow
+        if let downLocation = lastMouseDownLocation {
+            let deltaX = abs(downLocation.x - event.locationInWindow.x)
+            let deltaY = abs(downLocation.y - event.locationInWindow.y)
+            didMeetMovementThreshold = deltaX > movementThreshold || deltaY > movementThreshold
+        } else {
+            didMeetMovementThreshold = false
+        }
         if let downDate = lastMouseDownDate {
             let interval = Date().timeIntervalSince(downDate)
             if interval < 0.3 {
@@ -163,6 +190,17 @@ class SelectionMonitor {
 
         if shouldIgnoreNextSelection {
             shouldIgnoreNextSelection = false
+            if currentSelectedText != nil {
+                currentSelectedText = nil
+                currentSelectionBounds = nil
+                delegate?.didCancelTextSelection()
+            }
+            return
+        }
+
+        if let _ = lastMouseDownLocation,
+           let _ = lastMouseUpLocation,
+           !didMeetMovementThreshold {
             if currentSelectedText != nil {
                 currentSelectedText = nil
                 currentSelectionBounds = nil
@@ -219,6 +257,9 @@ class SelectionMonitor {
         }
         if let chromeSelection = getSelectedTextFromChrome() {
             return chromeSelection
+        }
+        if let forcedSelection = getSelectedTextViaForcedCopy() {
+            return forcedSelection
         }
         return nil
     }
@@ -348,6 +389,48 @@ class SelectionMonitor {
         let mouseLocation = NSEvent.mouseLocation
         let fallbackBounds = CGRect(x: mouseLocation.x - 60, y: mouseLocation.y - 20, width: 160, height: 32)
         return (newRawText, fallbackBounds, .appKit)
+    }
+
+    /// 通过模拟复制获取选中文本
+    /// Retrieve selected text by simulating Command+C when forced selection is enabled
+    private func getSelectedTextViaForcedCopy() -> (String, CGRect, SelectionCoordinateSpace)? {
+        guard AppPreferences.shared.forceSelectionEnabled else {
+            return nil
+        }
+
+        let scriptSource = """
+        set previousClipboard to (the clipboard as record)
+        tell application "System Events"
+            keystroke "c" using {command down}
+        end tell
+        delay 0.05
+        set selectedText to the (the clipboard as text)
+        set the clipboard to previousClipboard
+        return selectedText
+        """
+
+        guard let script = NSAppleScript(source: scriptSource) else {
+            return nil
+        }
+
+        var errorDict: NSDictionary?
+        let descriptor = script.executeAndReturnError(&errorDict)
+
+        if let errorDict {
+            print("Forced copy AppleScript error: \(errorDict)")
+            return nil
+        }
+
+        guard let textValue = descriptor.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !textValue.isEmpty,
+              textValue.lowercased() != "undefined",
+              textValue.lowercased() != "null" else {
+            return nil
+        }
+
+        let mouseLocation = NSEvent.mouseLocation
+        let fallbackBounds = CGRect(x: mouseLocation.x - 60, y: mouseLocation.y - 20, width: 160, height: 32)
+        return (textValue, fallbackBounds, .appKit)
     }
     
     /// 获取选区的精确边界

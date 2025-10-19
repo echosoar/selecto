@@ -31,9 +31,17 @@ struct ContentView: View {
             // Actions tab
             ActionsView()
                 .tabItem {
-                    Label("设置", systemImage: "slider.horizontal.3")
+                    Label("动作", systemImage: "slider.horizontal.3")
                 }
                 .tag(1)
+
+            // 设置页
+            // Settings tab
+            PreferencesView()
+                .tabItem {
+                    Label("设置", systemImage: "gearshape")
+                }
+                .tag(2)
             
             // 历史记录页
             // History tab
@@ -41,7 +49,7 @@ struct ContentView: View {
                 .tabItem {
                     Label("日志", systemImage: "clock")
                 }
-                .tag(2)
+                .tag(3)
         }
         .frame(minWidth: 800, minHeight: 600)
     }
@@ -430,6 +438,40 @@ struct ActionsView: View {
     }
 }
 
+/// 偏好设置视图
+/// Preferences view
+struct PreferencesView: View {
+
+    /// 应用偏好设置
+    /// Application preferences storage
+    @ObservedObject private var preferences = AppPreferences.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            Text("偏好设置")
+                .font(.largeTitle)
+                .bold()
+
+            GroupBox(label: Label("文本选择", systemImage: "text.cursor")) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("开启强制选词", isOn: $preferences.forceSelectionEnabled)
+                        .toggleStyle(.switch)
+
+                    Text("启用后，如果常规方式无法读取选中文本，将尝试模拟 Command+C，并读取剪贴板内容获取文本。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding()
+            }
+
+            Spacer()
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
 /// 历史记录视图
 /// History view
 struct HistoryView: View {
@@ -636,7 +678,7 @@ struct ActionDetailView: View {
     var onDelete: ((ActionItem) -> Void)? = nil
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // 标题
@@ -714,10 +756,11 @@ struct ActionDetailView: View {
                                 .buttonStyle(.bordered)
                             }
                         }
+                            .padding(.vertical, 24)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 4)
+                .padding(.bottom, 24)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         

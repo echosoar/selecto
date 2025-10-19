@@ -19,6 +19,7 @@
 		100000000000000A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000A /* SettingsView.swift */; };
 		100000000000000B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000D /* ContentView.swift */; };
 		100000000000000C /* SelectionHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000E /* SelectionHistoryManager.swift */; };
+		100000000000000D /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000F /* AppPreferences.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		200000000000000C /* Selecto.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Selecto.entitlements; sourceTree = "<group>"; };
 		200000000000000D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		200000000000000E /* SelectionHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionHistoryManager.swift; sourceTree = "<group>"; };
+		200000000000000F /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
 		3000000000000001 /* Selecto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Selecto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -98,6 +100,7 @@
 				2000000000000008 /* ActionExecutor.swift */,
 				2000000000000009 /* PermissionManager.swift */,
 				200000000000000E /* SelectionHistoryManager.swift */,
+				200000000000000F /* AppPreferences.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -191,6 +194,7 @@
 				100000000000000A /* SettingsView.swift in Sources */,
 				100000000000000B /* ContentView.swift in Sources */,
 				100000000000000C /* SelectionHistoryManager.swift in Sources */,
+				100000000000000D /* AppPreferences.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
