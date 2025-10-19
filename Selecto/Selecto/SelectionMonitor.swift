@@ -33,9 +33,13 @@ class SelectionMonitor {
     /// Delegate object
     weak var delegate: SelectionMonitorDelegate?
     
-    /// 鼠标事件监听器
-    /// Mouse event monitor
-    private var mouseEventMonitor: Any?
+    /// 鼠标按下事件监听器
+    /// Mouse down event monitor
+    private var mouseDownMonitor: Any?
+    
+    /// 鼠标抬起事件监听器
+    /// Mouse up event monitor
+    private var mouseUpMonitor: Any?
     
     /// 键盘事件监听器
     /// Keyboard event monitor
@@ -53,6 +57,10 @@ class SelectionMonitor {
     /// Timer for checking selection state
     private var checkTimer: Timer?
     
+    /// 标记当前是否处于鼠标拖拽选择中
+    /// Indicates whether a mouse-driven selection is in progress
+    private var isMouseSelecting = false
+    
     // MARK: - Public Methods
     
     /// 开始监控文本选择
@@ -60,7 +68,11 @@ class SelectionMonitor {
     func startMonitoring() {
         // 监听鼠标事件
         // Monitor mouse events
-        mouseEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { [weak self] event in
+        mouseDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] event in
+            self?.handleMouseDown(event)
+        }
+        
+        mouseUpMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { [weak self] event in
             self?.handleMouseUp(event)
         }
         
@@ -78,9 +90,14 @@ class SelectionMonitor {
     /// 停止监控文本选择
     /// Stop monitoring text selection
     func stopMonitoring() {
-        if let monitor = mouseEventMonitor {
+        if let monitor = mouseDownMonitor {
             NSEvent.removeMonitor(monitor)
-            mouseEventMonitor = nil
+            mouseDownMonitor = nil
+        }
+        
+        if let monitor = mouseUpMonitor {
+            NSEvent.removeMonitor(monitor)
+            mouseUpMonitor = nil
         }
         
         if let monitor = keyboardEventMonitor {
@@ -94,9 +111,21 @@ class SelectionMonitor {
     
     // MARK: - Private Methods
     
+    /// 处理鼠标按下事件
+    /// Handle mouse down event
+    private func handleMouseDown(_ event: NSEvent) {
+        isMouseSelecting = true
+        if currentSelectedText != nil {
+            currentSelectedText = nil
+            currentSelectionBounds = nil
+            delegate?.didCancelTextSelection()
+        }
+    }
+    
     /// 处理鼠标抬起事件
     /// Handle mouse up event
     private func handleMouseUp(_ event: NSEvent) {
+        isMouseSelecting = false
         // 延迟检查以确保选择已完成
         // Delay check to ensure selection is complete
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -141,6 +170,12 @@ class SelectionMonitor {
         }
 
         let bounds = normalizeBounds(rawBounds, from: coordinateSpace)
+        
+        // 在鼠标拖拽过程中不触发显示
+        // Skip updates while mouse selection is in progress
+        if isMouseSelecting {
+            return
+        }
         
         // 过滤空白字符的选区
         // Ignore selections that contain only whitespace characters

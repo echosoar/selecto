@@ -40,17 +40,17 @@ enum ActionType: String, Codable, CaseIterable {
     var displayName: String {
         switch self {
         case .copyToClipboard:
-            return "复制 (Copy)"
+            return "复制"
         case .search:
-            return "搜索 (Search)"
+            return "搜索"
         case .translate:
-            return "翻译 (Translate)"
+            return "翻译"
         case .openURL:
-            return "打开链接 (Open URL)"
+            return "打开链接"
         case .executeScript:
-            return "运行脚本 (Run Script)"
+            return "运行脚本"
         case .custom:
-            return "自定义 (Custom)"
+            return "自定义"
         }
     }
 }

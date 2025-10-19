@@ -23,7 +23,7 @@ struct ContentView: View {
             // Permissions tab
             PermissionsView()
                 .tabItem {
-                    Label("权限 (Permissions)", systemImage: "lock.shield")
+                    Label("权限", systemImage: "lock.shield")
                 }
                 .tag(0)
             
@@ -31,7 +31,7 @@ struct ContentView: View {
             // Actions tab
             ActionsView()
                 .tabItem {
-                    Label("动作 (Actions)", systemImage: "list.bullet")
+                    Label("动作", systemImage: "list.bullet")
                 }
                 .tag(1)
             
@@ -39,7 +39,7 @@ struct ContentView: View {
             // History tab
             HistoryView()
                 .tabItem {
-                    Label("历史 (History)", systemImage: "clock")
+                    Label("历史", systemImage: "clock")
                 }
                 .tag(2)
         }
@@ -65,12 +65,12 @@ struct PermissionsView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            Text("权限设置 (Permission Settings)")
+            Text("权限设置")
                 .font(.largeTitle)
                 .bold()
                 .padding(.top, 40)
             
-            Text("Selecto 需要以下权限才能正常工作 (Selecto requires the following permissions to work properly)")
+            Text("Selecto 需要以下权限才能正常工作")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -81,8 +81,8 @@ struct PermissionsView: View {
             // 辅助功能权限
             // Accessibility permission
             PermissionCard(
-                title: "辅助功能 (Accessibility)",
-                description: "允许 Selecto 监控文本选择 (Allow Selecto to monitor text selection)",
+                title: "辅助功能",
+                description: "允许 Selecto 监控文本选择",
                 isGranted: hasAccessibilityPermission,
                 icon: "hand.point.up.braille"
             ) {
@@ -93,8 +93,8 @@ struct PermissionsView: View {
             // Screen recording permission
             if #available(macOS 10.15, *) {
                 PermissionCard(
-                    title: "屏幕录制 (Screen Recording)",
-                    description: "允许 Selecto 获取选中文本的位置 (Allow Selecto to get the position of selected text)",
+                    title: "屏幕录制",
+                    description: "允许 Selecto 获取选中文本的位置",
                     isGranted: hasScreenRecordingPermission,
                     icon: "rectangle.on.rectangle"
                 ) {
@@ -110,11 +110,11 @@ struct PermissionsView: View {
                         .font(.system(size: 40))
                         .foregroundColor(.green)
                     
-                    Text("所有必需权限已授予 (All required permissions granted)")
+                    Text("所有必需权限已授予")
                         .font(.headline)
                         .foregroundColor(.green)
                     
-                    Text("您现在可以使用 Selecto 的所有功能 (You can now use all features of Selecto)")
+                    Text("您现在可以使用 Selecto 的所有功能")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -199,12 +199,12 @@ struct PermissionCard: View {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                    Text("已授权 (Granted)")
+                    Text("已授权")
                         .foregroundColor(.green)
                 }
             } else {
                 Button(action: action) {
-                    Text("授权 (Authorize)")
+                    Text("授权")
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
                 }
@@ -241,43 +241,70 @@ struct ActionsView: View {
     @State private var showingEditAction = false
     
     var body: some View {
-        NavigationView {
-            // 侧边栏：动作列表
-            // Sidebar: Action list
-            List(selection: $selectedAction) {
-                ForEach(actions) { action in
-                    ActionRow(action: action)
-                        .tag(action)
-                        .contextMenu {
-                            Button("编辑 (Edit)") {
-                                selectedAction = action
-                                showingEditAction = true
-                            }
-                            Button("删除 (Delete)", role: .destructive) {
-                                deleteAction(action)
-                            }
+        GeometryReader { geometry in
+            let contentWidth = min(geometry.size.width, 1100)
+            let sidebarWidth = max(contentWidth * 0.35, 280)
+            let detailWidth = max(contentWidth - sidebarWidth, 320)
+            
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    sidebarHeader
+                    List(selection: $selectedAction) {
+                        ForEach(actions) { action in
+                            ActionRow(action: action)
+                                .tag(action)
+                                .contextMenu {
+                                    Button("上移") {
+                                        moveActionUp(action)
+                                    }
+                                    .disabled(isFirstAction(action))
+                                    Button("下移") {
+                                        moveActionDown(action)
+                                    }
+                                    .disabled(isLastAction(action))
+                                    Button("编辑") {
+                                        selectedAction = action
+                                        showingEditAction = true
+                                    }
+                                    Button("删除", role: .destructive) {
+                                        deleteAction(action)
+                                    }
+                                }
                         }
+                    }
+                    .listStyle(InsetListStyle())
+                    .padding(.leading, 12)
+                    .padding(.trailing, 4)
                 }
-                .onMove(perform: moveActions)
-            }
-            .listStyle(.sidebar)
-            .frame(minWidth: 250)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddAction = true }) {
-                        Image(systemName: "plus")
+                .frame(width: sidebarWidth, height: geometry.size.height)
+                
+                Divider()
+                    .padding(.vertical, 24)
+                
+                Group {
+                    if let action = selectedAction {
+                        ActionDetailView(
+                            action: action,
+                            onEdit: { selected in
+                                selectedAction = selected
+                                showingEditAction = true
+                            },
+                            onDelete: { toDelete in
+                                deleteAction(toDelete)
+                            }
+                        )
+                    } else {
+                        Text("选择一个动作查看详情")
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
                     }
                 }
+                .frame(width: detailWidth, height: geometry.size.height, alignment: .topLeading)
+                .padding(24)
             }
-            
-            // 详细视图
-            // Detail view
-            if let action = selectedAction {
-                ActionDetailView(action: action)
-            } else {
-                Text("选择一个动作查看详情\nSelect an action to view details")
-                    .foregroundColor(.secondary)
-            }
+            .frame(width: contentWidth, height: geometry.size.height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.vertical, 24)
         }
         .sheet(isPresented: $showingAddAction) {
             ActionEditorView(action: nil) { newAction in
@@ -293,6 +320,7 @@ struct ActionsView: View {
                 }
             }
         }
+    .onAppear(perform: ensureSelection)
     }
     
     /// 删除动作
@@ -302,26 +330,108 @@ struct ActionsView: View {
         refreshActions()
     }
     
-    /// 移动动作
-    /// Move actions
-    private func moveActions(from source: IndexSet, to destination: Int) {
-        actions.move(fromOffsets: source, toOffset: destination)
-        
-        // 更新排序
-        // Update sort order
+    /// 刷新动作列表
+    /// Refresh action list
+    private func refreshActions() {
+        let updatedActions = ActionManager.shared.actions.sorted { $0.sortOrder < $1.sortOrder }
+        actions = updatedActions
+        if let currentSelection = selectedAction,
+           let refreshedSelection = updatedActions.first(where: { $0.id == currentSelection.id }) {
+            selectedAction = refreshedSelection
+        } else {
+            selectedAction = updatedActions.first
+        }
+    }
+
+    /// 确保存在默认选中的动作
+    /// Ensure there's a default selected action when entering the view
+    private func ensureSelection() {
+        if selectedAction == nil {
+            selectedAction = actions.first
+        }
+    }
+    
+    /// 侧边栏标题区
+    /// Sidebar header area
+    private var sidebarHeader: some View {
+        HStack(spacing: 12) {
+            Text("动作列表")
+                .font(.title3)
+                .bold()
+            Spacer()
+            Button(action: {
+                if let action = selectedAction {
+                    moveActionUp(action)
+                }
+            }) {
+                Image(systemName: "arrow.up")
+            }
+            .controlSize(.small)
+            .buttonStyle(.borderless)
+            .disabled(selectedAction.map(isFirstAction) ?? true)
+            
+            Button(action: {
+                if let action = selectedAction {
+                    moveActionDown(action)
+                }
+            }) {
+                Image(systemName: "arrow.down")
+            }
+            .controlSize(.small)
+            .buttonStyle(.borderless)
+            .disabled(selectedAction.map(isLastAction) ?? true)
+            Button(action: { showingAddAction = true }) {
+                Label("添加", systemImage: "plus")
+                    .labelStyle(.iconOnly)
+            }
+            .controlSize(.small)
+            .buttonStyle(.borderless)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.thinMaterial)
+    }
+
+    /// 将动作上移一位
+    /// Move action up by one position
+    private func moveActionUp(_ action: ActionItem) {
+        guard let index = actions.firstIndex(where: { $0.id == action.id }), index > 0 else { return }
+        actions.swapAt(index, index - 1)
+        persistActionOrder()
+    }
+    
+    /// 将动作下移一位
+    /// Move action down by one position
+    private func moveActionDown(_ action: ActionItem) {
+        guard let index = actions.firstIndex(where: { $0.id == action.id }), index < actions.count - 1 else { return }
+        actions.swapAt(index, index + 1)
+        persistActionOrder()
+    }
+    
+    /// 判断是否为第一个动作
+    /// Check if action is the first in the list
+    private func isFirstAction(_ action: ActionItem) -> Bool {
+        guard let first = actions.first else { return false }
+        return first.id == action.id
+    }
+    
+    /// 判断是否为最后一个动作
+    /// Check if action is the last in the list
+    private func isLastAction(_ action: ActionItem) -> Bool {
+        guard let last = actions.last else { return false }
+        return last.id == action.id
+    }
+    
+    /// 持久化更新后的动作排序
+    /// Persist the updated action order to the manager
+    private func persistActionOrder() {
         for (index, action) in actions.enumerated() {
             var updatedAction = action
             updatedAction.sortOrder = index
             actions[index] = updatedAction
         }
-        
         ActionManager.shared.reorderActions(actions)
-    }
-    
-    /// 刷新动作列表
-    /// Refresh action list
-    private func refreshActions() {
-        actions = ActionManager.shared.actions
+        refreshActions()
     }
 }
 
@@ -346,13 +456,13 @@ struct HistoryView: View {
             // 标题栏
             // Header
             HStack {
-                Text("选择历史 (Selection History)")
+                Text("选择历史")
                     .font(.largeTitle)
                     .bold()
                 
                 Spacer()
                 
-                Toggle("启用历史记录 (Enable History)", isOn: $isHistoryEnabled)
+                Toggle("启用历史记录", isOn: $isHistoryEnabled)
                     .onChange(of: isHistoryEnabled) { newValue in
                         SelectionHistoryManager.shared.isEnabled = newValue
                     }
@@ -369,11 +479,11 @@ struct HistoryView: View {
                         .font(.system(size: 60))
                         .foregroundColor(.secondary)
                     
-                    Text("历史记录已禁用 (History is disabled)")
+                    Text("历史记录已禁用")
                         .font(.headline)
                         .foregroundColor(.secondary)
                     
-                    Text("启用历史记录以查看最近选择的文本 (Enable history to see recently selected text)")
+                    Text("启用历史记录以查看最近选择的文本")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -387,11 +497,11 @@ struct HistoryView: View {
                         .font(.system(size: 60))
                         .foregroundColor(.secondary)
                     
-                    Text("暂无历史记录 (No history yet)")
+                    Text("暂无历史记录")
                         .font(.headline)
                         .foregroundColor(.secondary)
                     
-                    Text("选择一些文本后，它们会显示在这里 (Selected text will appear here)")
+                    Text("选择一些文本后，它们会显示在这里")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -448,7 +558,7 @@ struct HistoryRow: View {
                     pasteboard.clearContents()
                     pasteboard.setString(history.text, forType: .string)
                 }) {
-                    Label("复制 (Copy)", systemImage: "doc.on.doc")
+                    Label("复制", systemImage: "doc.on.doc")
                         .font(.caption)
                 }
                 .buttonStyle(.borderless)
@@ -527,6 +637,8 @@ struct ActionRow: View {
 /// Action detail view
 struct ActionDetailView: View {
     let action: ActionItem
+    var onEdit: ((ActionItem) -> Void)? = nil
+    var onDelete: ((ActionItem) -> Void)? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -538,11 +650,11 @@ struct ActionDetailView: View {
             
             // 基本信息
             // Basic information
-            GroupBox(label: Text("基本信息 (Basic Information)")) {
+            GroupBox(label: Text("基本信息")) {
                 VStack(alignment: .leading, spacing: 10) {
-                    InfoRow(label: "名称 (Name)", value: action.name)
-                    InfoRow(label: "类型 (Type)", value: action.type.displayName)
-                    InfoRow(label: "状态 (Status)", value: action.isEnabled ? "启用 (Enabled)" : "禁用 (Disabled)")
+                    InfoRow(label: "名称", value: action.name)
+                    InfoRow(label: "类型", value: action.type.displayName)
+                    InfoRow(label: "状态", value: action.isEnabled ? "启用" : "禁用")
                 }
                 .padding()
             }
@@ -550,9 +662,9 @@ struct ActionDetailView: View {
             // 匹配条件
             // Match condition
             if let pattern = action.matchPattern, !pattern.isEmpty {
-                GroupBox(label: Text("匹配条件 (Match Condition)")) {
+                GroupBox(label: Text("匹配条件")) {
                     VStack(alignment: .leading) {
-                        Text("正则表达式 (Regex): \(pattern)")
+                        Text("正则表达式：\(pattern)")
                             .font(.system(.body, design: .monospaced))
                     }
                     .padding()
@@ -562,7 +674,7 @@ struct ActionDetailView: View {
             // 参数
             // Parameters
             if !action.parameters.isEmpty {
-                GroupBox(label: Text("参数 (Parameters)")) {
+                GroupBox(label: Text("参数")) {
                     VStack(alignment: .leading, spacing: 5) {
                         ForEach(Array(action.parameters.keys.sorted()), id: \.self) { key in
                             if let value = action.parameters[key] {
@@ -575,6 +687,34 @@ struct ActionDetailView: View {
             }
             
             Spacer()
+
+            if onEdit != nil || onDelete != nil {
+                Divider()
+                    .padding(.vertical, 8)
+                HStack {
+                    if let onEdit {
+                        Button {
+                            onEdit(action)
+                        } label: {
+                            Label("编辑", systemImage: "pencil")
+                                .labelStyle(.titleAndIcon)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    
+                    Spacer()
+                    
+                    if let onDelete {
+                        Button(role: .destructive) {
+                            onDelete(action)
+                        } label: {
+                            Label("删除", systemImage: "trash")
+                                .labelStyle(.titleAndIcon)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -627,45 +767,45 @@ struct ActionEditorView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("基本信息 (Basic Information)")) {
-                TextField("名称 (Name)", text: $name)
-                TextField("显示名称 (Display Name)", text: $displayName)
+            Section(header: Text("基本信息")) {
+                TextField("名称", text: $name)
+                TextField("显示名称", text: $displayName)
                 
-                Picker("类型 (Type)", selection: $type) {
+                Picker("类型", selection: $type) {
                     ForEach(ActionType.allCases, id: \.self) { type in
                         Text(type.displayName).tag(type)
                     }
                 }
                 
-                Toggle("启用 (Enabled)", isOn: $isEnabled)
+                Toggle("启用", isOn: $isEnabled)
             }
             
-            Section(header: Text("匹配条件 (Match Condition)")) {
-                TextField("正则表达式 (Regex Pattern)", text: $matchPattern)
+            Section(header: Text("匹配条件")) {
+                TextField("正则表达式", text: $matchPattern)
                     .font(.system(.body, design: .monospaced))
-                Text("留空表示匹配所有文本 (Leave empty to match all text)")
+                Text("留空表示匹配所有文本")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             
-            Section(header: Text("参数 (Parameters)")) {
+            Section(header: Text("参数")) {
                 if type == .search || type == .translate || type == .openURL {
-                    TextField("URL 模板 (URL Template)", text: $urlParameter)
-                    Text("使用 {text} 作为占位符 (Use {text} as placeholder)")
+                    TextField("URL 模板", text: $urlParameter)
+                    Text("使用 {text} 作为占位符")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             
             HStack {
-                Button("取消 (Cancel)") {
+                Button("取消") {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
                 
                 Spacer()
                 
-                Button("保存 (Save)") {
+                Button("保存") {
                     saveAction()
                 }
                 .keyboardShortcut(.defaultAction)

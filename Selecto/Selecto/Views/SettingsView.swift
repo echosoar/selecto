@@ -43,11 +43,11 @@ struct SettingsView: View {
                     ActionRow(action: action)
                         .tag(action)
                         .contextMenu {
-                            Button("编辑 (Edit)") {
+                            Button("编辑") {
                                 selectedAction = action
                                 showingEditAction = true
                             }
-                            Button("删除 (Delete)", role: .destructive) {
+                            Button("删除", role: .destructive) {
                                 deleteAction(action)
                             }
                         }
@@ -69,7 +69,7 @@ struct SettingsView: View {
             if let action = selectedAction {
                 ActionDetailView(action: action)
             } else {
-                Text("选择一个动作查看详情\nSelect an action to view details")
+                Text("选择一个动作查看详情")
                     .foregroundColor(.secondary)
             }
         }
