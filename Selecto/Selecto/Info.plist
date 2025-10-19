@@ -22,6 +22,8 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Selecto 需要访问 Apple 事件以读取和处理浏览器中的选中文本。</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2024 Gao Yang. All rights reserved.</string>
 	<key>NSMainStoryboardFile</key>

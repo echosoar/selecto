@@ -53,10 +53,6 @@ class SelectionMonitor {
     /// Bounds of the current selection
     private var currentSelectionBounds: CGRect?
     
-    /// 定时器用于检查选择状态
-    /// Timer for checking selection state
-    private var checkTimer: Timer?
-    
     /// 标记当前是否处于鼠标拖拽选择中
     /// Indicates whether a mouse-driven selection is in progress
     private var isMouseSelecting = false
@@ -90,9 +86,6 @@ class SelectionMonitor {
             self?.handleKeyDown(event)
         }
         
-        // 启动定时检查
-        // Start periodic checking
-        startPeriodicCheck()
     }
     
     /// 停止监控文本选择
@@ -112,9 +105,6 @@ class SelectionMonitor {
             NSEvent.removeMonitor(monitor)
             keyboardEventMonitor = nil
         }
-        
-        checkTimer?.invalidate()
-        checkTimer = nil
     }
     
     // MARK: - Private Methods
@@ -153,21 +143,13 @@ class SelectionMonitor {
     /// 处理键盘按下事件
     /// Handle key down event
     private func handleKeyDown(_ event: NSEvent) {
-        // 检查是否是快捷键（如 Cmd+C）
-        // Check if it's a shortcut key (e.g., Cmd+C)
-        if event.modifierFlags.contains(.command) {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.checkForTextSelection()
-            }
-        }
-    }
-    
-    /// 启动定期检查
-    /// Start periodic checking
-    private func startPeriodicCheck() {
-        checkTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.checkForTextSelection()
-        }
+        // // 检查是否是快捷键（如 Cmd+C）
+        // // Check if it's a shortcut key (e.g., Cmd+C)
+        // if event.modifierFlags.contains(.command) {
+        //     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+        //         self?.checkForTextSelection()
+        //     }
+        // }
     }
     
     /// 检查是否有文本被选中
@@ -200,7 +182,7 @@ class SelectionMonitor {
 
         // 过滤空白字符的选区
         // Ignore selections that contain only whitespace characters
-    let trimmed = text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        let trimmed = text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         if trimmed.isEmpty {
             if currentSelectedText != nil {
                 currentSelectedText = nil
