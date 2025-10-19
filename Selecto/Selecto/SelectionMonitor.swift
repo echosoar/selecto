@@ -344,7 +344,7 @@ class SelectionMonitor {
             return nil
         }
          // rawText + bundleIdentifier
-        let newRawText = trimmed + " " + bundleIdentifier
+        let newRawText = trimmed
         let mouseLocation = NSEvent.mouseLocation
         let fallbackBounds = CGRect(x: mouseLocation.x - 60, y: mouseLocation.y - 20, width: 160, height: 32)
         return (newRawText, fallbackBounds, .appKit)
