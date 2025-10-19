@@ -173,11 +173,35 @@ class SelectionMonitor {
     /// 检查是否有文本被选中
     /// Check if text is selected
     private func checkForTextSelection() {
-        // 使用辅助功能 API 获取选中的文本
-        // Use Accessibility API to get selected text
-        guard let (text, rawBounds, coordinateSpace) = getSelectedTextViaAccessibility() else {
-            // 如果没有选中文本，通知代理
-            // If no text is selected, notify delegate
+        // 在鼠标拖拽过程中不触发显示
+        // Skip updates while mouse selection is in progress
+        if isMouseSelecting {
+            return
+        }
+
+        if shouldIgnoreNextSelection {
+            shouldIgnoreNextSelection = false
+            if currentSelectedText != nil {
+                currentSelectedText = nil
+                currentSelectionBounds = nil
+                delegate?.didCancelTextSelection()
+            }
+            return
+        }
+
+        guard let (text, rawBounds, coordinateSpace) = currentSelectionSnapshot() else {
+            if currentSelectedText != nil {
+                currentSelectedText = nil
+                currentSelectionBounds = nil
+                delegate?.didCancelTextSelection()
+            }
+            return
+        }
+
+        // 过滤空白字符的选区
+        // Ignore selections that contain only whitespace characters
+    let trimmed = text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        if trimmed.isEmpty {
             if currentSelectedText != nil {
                 currentSelectedText = nil
                 currentSelectionBounds = nil
@@ -187,28 +211,7 @@ class SelectionMonitor {
         }
 
         let bounds = normalizeBounds(rawBounds, from: coordinateSpace)
-        
-        // 在鼠标拖拽过程中不触发显示
-        // Skip updates while mouse selection is in progress
-        if isMouseSelecting {
-            return
-        }
-        
-        if shouldIgnoreNextSelection {
-            return
-        }
-        
-        // 过滤空白字符的选区
-        // Ignore selections that contain only whitespace characters
-        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            if currentSelectedText != nil {
-                currentSelectedText = nil
-                currentSelectionBounds = nil
-                delegate?.didCancelTextSelection()
-            }
-            return
-        }
-        
+
         // 如果选中的文本与之前不同
         // If selected text is different from before
         let shouldNotify: Bool
@@ -218,12 +221,24 @@ class SelectionMonitor {
         } else {
             shouldNotify = true
         }
-        
+
         if shouldNotify {
             currentSelectedText = text
             currentSelectionBounds = bounds
             delegate?.didDetectTextSelection(text: text, bounds: bounds)
         }
+    }
+
+    /// 获取当前选区快照
+    /// Retrieve the current selection snapshot from available sources
+    private func currentSelectionSnapshot() -> (String, CGRect, SelectionCoordinateSpace)? {
+        if let selection = getSelectedTextViaAccessibility() {
+            return selection
+        }
+        if let chromeSelection = getSelectedTextFromChrome() {
+            return chromeSelection
+        }
+        return nil
     }
     
     /// 通过辅助功能 API 获取选中的文本
@@ -296,7 +311,61 @@ class SelectionMonitor {
             bounds = CGRect(x: mouseLocation.x, y: mouseLocation.y, width: 100, height: 20)
             coordinateSpace = .appKit
         }
+        // 如果 text 是空，返回 nil
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return nil
+        }
         return (text, bounds, coordinateSpace)
+    }
+
+    /// 使用 AppleScript 从 Chrome 获取选中的文本
+    /// Retrieve selected text from Google Chrome via AppleScript when AX fails
+    private func getSelectedTextFromChrome() -> (String, CGRect, SelectionCoordinateSpace)? {
+        guard let bundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier else {
+            return nil
+        }
+        let supportedBundleIdentifiers: Set<String> = [
+            "com.google.Chrome",
+            "com.google.Chrome.beta",
+            "com.google.Chrome.dev",
+            "com.google.Chrome.canary"
+        ]
+        guard supportedBundleIdentifiers.contains(bundleIdentifier) else {
+            return nil
+        }
+
+        let scriptSource = """
+        tell application id "\(bundleIdentifier)"
+            tell active tab of front window
+                set selection_text to execute javascript "window.getSelection().toString();"
+            end tell
+        end tell
+        """
+
+        guard let script = NSAppleScript(source: scriptSource) else {
+            return nil
+        }
+        var result: String = ""
+        var errorDict: NSDictionary?
+        let descriptor = script.executeAndReturnError(&errorDict)
+        if let errorDict = errorDict {
+            // result = errorDict[NSAppleScript.errorMessage] as? String ?? "AppleScript error"
+            print("AppleScript error: \(errorDict)")
+        }
+
+        if descriptor.stringValue != nil {
+            result = descriptor.stringValue ?? ""
+        }
+
+        let trimmed = result.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed == "undefined" || trimmed == "null" {
+            return nil
+        }
+         // rawText + bundleIdentifier
+        let newRawText = trimmed + " " + bundleIdentifier
+        let mouseLocation = NSEvent.mouseLocation
+        let fallbackBounds = CGRect(x: mouseLocation.x - 60, y: mouseLocation.y - 20, width: 160, height: 32)
+        return (newRawText, fallbackBounds, .appKit)
     }
     
     /// 获取选区的精确边界
