@@ -1,5 +1,5 @@
 //
-//  SettingsWindowController.swift
+//  ControlPanelWindowController.swift
 //  Selecto
 //
 //  Created by Gao Yang on 2024.
@@ -9,29 +9,27 @@
 import Cocoa
 import SwiftUI
 
-/// 设置窗口控制器
-/// Settings window controller
-class SettingsWindowController: NSWindowController {
+/// 控制面板窗口控制器
+/// Control panel window controller
+class ControlPanelWindowController: NSWindowController {
     
     convenience init() {
-        // 创建设置视图
-        // Create settings view
-        let settingsView = SettingsView()
-        let hostingController = NSHostingController(rootView: settingsView)
+        let controlPanelView = ContentView()
+        let hostingController = NSHostingController(rootView: controlPanelView)
         
-        // 创建窗口
-        // Create window
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 620),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         
-        window.title = "Selecto 设置 (Settings)"
+        window.title = "Selecto 控制面板"
+        window.isReleasedWhenClosed = false
         window.contentViewController = hostingController
         window.center()
-        window.setFrameAutosaveName("SettingsWindow")
+        window.setFrameAutosaveName("ControlPanelWindow")
+        window.tabbingMode = .disallowed
         
         self.init(window: window)
     }

@@ -23,7 +23,7 @@ struct ContentView: View {
             // Permissions tab
             PermissionsView()
                 .tabItem {
-                    Label("权限", systemImage: "lock.shield")
+                    Label("授权", systemImage: "lock.shield")
                 }
                 .tag(0)
             
@@ -31,7 +31,7 @@ struct ContentView: View {
             // Actions tab
             ActionsView()
                 .tabItem {
-                    Label("动作", systemImage: "list.bullet")
+                    Label("设置", systemImage: "slider.horizontal.3")
                 }
                 .tag(1)
             
@@ -39,7 +39,7 @@ struct ContentView: View {
             // History tab
             HistoryView()
                 .tabItem {
-                    Label("历史", systemImage: "clock")
+                    Label("日志", systemImage: "clock")
                 }
                 .tag(2)
         }
@@ -65,12 +65,12 @@ struct PermissionsView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            Text("权限设置")
+            Text("授权")
                 .font(.largeTitle)
                 .bold()
                 .padding(.top, 40)
             
-            Text("Selecto 需要以下权限才能正常工作")
+            Text("Selecto 需要以下授权才能正常工作")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -110,7 +110,7 @@ struct PermissionsView: View {
                         .font(.system(size: 40))
                         .foregroundColor(.green)
                     
-                    Text("所有必需权限已授予")
+                    Text("所有必需授权已授予")
                         .font(.headline)
                         .foregroundColor(.green)
                     
@@ -451,13 +451,13 @@ struct HistoryView: View {
             // 标题栏
             // Header
             HStack {
-                Text("选择历史")
+                Text("选择日志")
                     .font(.largeTitle)
                     .bold()
                 
                 Spacer()
                 
-                Toggle("启用历史记录", isOn: $isHistoryEnabled)
+                Toggle("启用日志记录", isOn: $isHistoryEnabled)
                     .onChange(of: isHistoryEnabled) { newValue in
                         SelectionHistoryManager.shared.isEnabled = newValue
                     }
@@ -474,25 +474,25 @@ struct HistoryView: View {
                         .font(.system(size: 60))
                         .foregroundColor(.secondary)
                     
-                    Text("历史记录已禁用")
+                    Text("日志记录已禁用")
                         .font(.headline)
                         .foregroundColor(.secondary)
                     
-                    Text("启用历史记录以查看最近选择的文本")
+                    Text("启用日志记录以查看最近选择的文本")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if history.isEmpty {
-                // 历史记录为空
+                // 日志记录为空
                 // History is empty
                 VStack(spacing: 20) {
                     Image(systemName: "clock")
                         .font(.system(size: 60))
                         .foregroundColor(.secondary)
                     
-                    Text("暂无历史记录")
+                    Text("暂无日志记录")
                         .font(.headline)
                         .foregroundColor(.secondary)
                     

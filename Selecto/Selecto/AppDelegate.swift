@@ -56,6 +56,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Toolbar window controller
     private var toolbarController: ToolbarWindowController?
     
+    /// 控制面板窗口控制器
+    /// Control panel window controller
+    private var controlPanelWindowController: ControlPanelWindowController?
+    
     // MARK: - Application Lifecycle
     
     /// 应用程序启动完成回调
@@ -120,25 +124,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create menu
         let menu = NSMenu()
         
-        menu.addItem(NSMenuItem(title: "显示设置 (Show Settings)", action: #selector(showSettings), keyEquivalent: ","))
+        let controlPanelItem = NSMenuItem(title: "显示控制面板", action: #selector(showControlPanel), keyEquivalent: ",")
+        controlPanelItem.target = self
+        menu.addItem(controlPanelItem)
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "退出 (Quit)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        let quitItem = NSMenuItem(title: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quitItem.target = NSApp
+        menu.addItem(quitItem)
         
         statusItem?.menu = menu
     }
     
-    /// 显示设置窗口
-    /// Show settings window
-    @objc private func showSettings() {
-        // 激活应用并显示主窗口
-        // Activate app and show main window
-        NSApp.activate(ignoringOtherApps: true)
-        for window in NSApp.windows {
-            if window.contentViewController != nil {
-                window.makeKeyAndOrderFront(nil)
-                break
-            }
+    /// 显示控制面板
+    /// Show control panel window
+    @objc private func showControlPanel() {
+        if controlPanelWindowController == nil {
+            controlPanelWindowController = ControlPanelWindowController()
         }
+        NSApp.activate(ignoringOtherApps: true)
+        controlPanelWindowController?.showWindow(nil)
+        controlPanelWindowController?.window?.makeKeyAndOrderFront(nil)
     }
 }
 

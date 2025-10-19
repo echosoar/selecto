@@ -61,6 +61,14 @@ class SelectionMonitor {
     /// Indicates whether a mouse-driven selection is in progress
     private var isMouseSelecting = false
     
+    /// 上一次鼠标按下时间
+    /// Timestamp of last mouse down event
+    private var lastMouseDownDate: Date?
+    
+    /// 是否忽略接下来的短时选择
+    /// Flag to ignore next short-lived selection
+    private var shouldIgnoreNextSelection = false
+    
     // MARK: - Public Methods
     
     /// 开始监控文本选择
@@ -115,6 +123,7 @@ class SelectionMonitor {
     /// Handle mouse down event
     private func handleMouseDown(_ event: NSEvent) {
         isMouseSelecting = true
+        lastMouseDownDate = Date()
         if currentSelectedText != nil {
             currentSelectedText = nil
             currentSelectionBounds = nil
@@ -126,6 +135,14 @@ class SelectionMonitor {
     /// Handle mouse up event
     private func handleMouseUp(_ event: NSEvent) {
         isMouseSelecting = false
+        if let downDate = lastMouseDownDate {
+            let interval = Date().timeIntervalSince(downDate)
+            if interval < 0.3 {
+                shouldIgnoreNextSelection = true
+            } else {
+                shouldIgnoreNextSelection = false
+            }
+        }
         // 延迟检查以确保选择已完成
         // Delay check to ensure selection is complete
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -174,6 +191,10 @@ class SelectionMonitor {
         // 在鼠标拖拽过程中不触发显示
         // Skip updates while mouse selection is in progress
         if isMouseSelecting {
+            return
+        }
+        
+        if shouldIgnoreNextSelection {
             return
         }
         
