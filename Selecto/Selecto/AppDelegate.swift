@@ -148,6 +148,9 @@ extension AppDelegate: SelectionMonitorDelegate {
     /// 当检测到文本选择时调用
     /// Called when text selection is detected
     func didDetectTextSelection(text: String, bounds: CGRect) {
+        if isSelectionInsideApp() {
+            return
+        }
         // 记录选择的文本
         // Log selected text
     SelectionHistoryManager.shared.addSelection(text, bounds: bounds)
@@ -169,5 +172,15 @@ extension AppDelegate: SelectionMonitorDelegate {
         // 隐藏工具栏
         // Hide toolbar
         toolbarController?.hideToolbar()
+    }
+}
+
+private extension AppDelegate {
+    func isSelectionInsideApp() -> Bool {
+        guard let frontApp = NSWorkspace.shared.frontmostApplication,
+              let bundleID = Bundle.main.bundleIdentifier else {
+            return false
+        }
+        return frontApp.bundleIdentifier == bundleID
     }
 }

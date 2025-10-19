@@ -262,13 +262,6 @@ struct ActionsView: View {
                                         moveActionDown(action)
                                     }
                                     .disabled(isLastAction(action))
-                                    Button("编辑") {
-                                        selectedAction = action
-                                        showingEditAction = true
-                                    }
-                                    Button("删除", role: .destructive) {
-                                        deleteAction(action)
-                                    }
                                 }
                         }
                     }
@@ -309,14 +302,14 @@ struct ActionsView: View {
         .sheet(isPresented: $showingAddAction) {
             ActionEditorView(action: nil) { newAction in
                 ActionManager.shared.addAction(newAction)
-                refreshActions()
+                refreshActions(selecting: newAction.id)
             }
         }
         .sheet(isPresented: $showingEditAction) {
             if let action = selectedAction {
                 ActionEditorView(action: action) { updatedAction in
                     ActionManager.shared.updateAction(updatedAction)
-                    refreshActions()
+                    refreshActions(selecting: updatedAction.id)
                 }
             }
         }
@@ -326,17 +319,18 @@ struct ActionsView: View {
     /// 删除动作
     /// Delete action
     private func deleteAction(_ action: ActionItem) {
-        ActionManager.shared.deleteAction(withId: action.id)
-        refreshActions()
+    ActionManager.shared.deleteAction(withId: action.id)
+    refreshActions(selecting: nil)
     }
     
     /// 刷新动作列表
     /// Refresh action list
-    private func refreshActions() {
+    private func refreshActions(selecting targetID: UUID? = nil) {
         let updatedActions = ActionManager.shared.actions.sorted { $0.sortOrder < $1.sortOrder }
         actions = updatedActions
-        if let currentSelection = selectedAction,
-           let refreshedSelection = updatedActions.first(where: { $0.id == currentSelection.id }) {
+        let desiredID = targetID ?? selectedAction?.id
+        if let desiredID,
+           let refreshedSelection = updatedActions.first(where: { $0.id == desiredID }) {
             selectedAction = refreshedSelection
         } else {
             selectedAction = updatedActions.first
@@ -347,7 +341,7 @@ struct ActionsView: View {
     /// Ensure there's a default selected action when entering the view
     private func ensureSelection() {
         if selectedAction == nil {
-            selectedAction = actions.first
+            refreshActions(selecting: nil)
         }
     }
     
@@ -358,6 +352,7 @@ struct ActionsView: View {
             Text("动作列表")
                 .font(.title3)
                 .bold()
+                .padding(.leading, 16)
             Spacer()
             Button(action: {
                 if let action = selectedAction {
@@ -430,8 +425,8 @@ struct ActionsView: View {
             updatedAction.sortOrder = index
             actions[index] = updatedAction
         }
-        ActionManager.shared.reorderActions(actions)
-        refreshActions()
+    ActionManager.shared.reorderActions(actions)
+    refreshActions(selecting: selectedAction?.id)
     }
 }
 
@@ -641,83 +636,84 @@ struct ActionDetailView: View {
     var onDelete: ((ActionItem) -> Void)? = nil
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // 标题
-            // Title
-            Text(action.displayName)
-                .font(.largeTitle)
-                .bold()
-            
-            // 基本信息
-            // Basic information
-            GroupBox(label: Text("基本信息")) {
-                VStack(alignment: .leading, spacing: 10) {
-                    InfoRow(label: "名称", value: action.name)
-                    InfoRow(label: "类型", value: action.type.displayName)
-                    InfoRow(label: "状态", value: action.isEnabled ? "启用" : "禁用")
-                }
-                .padding()
-            }
-            
-            // 匹配条件
-            // Match condition
-            if let pattern = action.matchPattern, !pattern.isEmpty {
-                GroupBox(label: Text("匹配条件")) {
-                    VStack(alignment: .leading) {
-                        Text("正则表达式：\(pattern)")
-                            .font(.system(.body, design: .monospaced))
+        VStack(alignment: .leading, spacing: 16) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // 标题
+                    // Title
+                    Text(action.displayName)
+                        .font(.largeTitle)
+                        .bold()
+                    
+                    // 基本信息
+                    GroupBox(label: Text("基本信息")) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            InfoRow(label: "名称", value: action.name)
+                            InfoRow(label: "类型", value: action.type.displayName)
+                            InfoRow(label: "状态", value: action.isEnabled ? "启用" : "禁用")
+                        }
+                        .padding()
                     }
-                    .padding()
-                }
-            }
-            
-            // 参数
-            // Parameters
-            if !action.parameters.isEmpty {
-                GroupBox(label: Text("参数")) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        ForEach(Array(action.parameters.keys.sorted()), id: \.self) { key in
-                            if let value = action.parameters[key] {
-                                InfoRow(label: key, value: value)
+                    
+                    // 匹配条件
+                    if let pattern = action.matchPattern, !pattern.isEmpty {
+                        GroupBox(label: Text("匹配条件")) {
+                            VStack(alignment: .leading) {
+                                Text("正则表达式：\(pattern)")
+                                    .font(.system(.body, design: .monospaced))
+                            }
+                            .padding()
+                        }
+                    }
+                    
+                    // 参数
+                    if !action.parameters.isEmpty {
+                        GroupBox(label: Text("参数")) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                ForEach(Array(action.parameters.keys.sorted()), id: \.self) { key in
+                                    if let value = action.parameters[key] {
+                                        InfoRow(label: key, value: value)
+                                    }
+                                }
+                            }
+                            .padding()
+                        }
+                    }
+
+                     if onEdit != nil || onDelete != nil {
+                        Divider()
+                            .padding(.vertical, 8)
+                        HStack {
+                            if let onEdit {
+                                Button {
+                                    onEdit(action)
+                                } label: {
+                                    Label("编辑", systemImage: "pencil")
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
+                            
+                            Spacer()
+                            
+                            if let onDelete {
+                                Button(role: .destructive) {
+                                    onDelete(action)
+                                } label: {
+                                    Label("删除", systemImage: "trash")
+                                }
+                                .buttonStyle(.bordered)
                             }
                         }
                     }
-                    .padding()
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 4)
             }
-            
-            Spacer()
-
-            if onEdit != nil || onDelete != nil {
-                Divider()
-                    .padding(.vertical, 8)
-                HStack {
-                    if let onEdit {
-                        Button {
-                            onEdit(action)
-                        } label: {
-                            Label("编辑", systemImage: "pencil")
-                                .labelStyle(.titleAndIcon)
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    
-                    Spacer()
-                    
-                    if let onDelete {
-                        Button(role: .destructive) {
-                            onDelete(action)
-                        } label: {
-                            Label("删除", systemImage: "trash")
-                                .labelStyle(.titleAndIcon)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                }
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        
         }
         .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }
 
