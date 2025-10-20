@@ -60,6 +60,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Control panel window controller
     private var controlPanelWindowController: ControlPanelWindowController?
     
+    /// 当前选中的文本
+    /// Current selected text
+    private var currentSelectedText: String?
+    
+    /// 当前选区的边界
+    /// Current selection bounds
+    private var currentSelectionBounds: CGRect?
+    
     // MARK: - Application Lifecycle
     
     /// 应用程序启动完成回调
@@ -83,6 +91,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 初始化工具栏控制器
         // Initialize toolbar controller
         toolbarController = ToolbarWindowController()
+        
+        // 监听动作更新通知
+        // Listen for action update notifications
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(actionsDidUpdate),
+            name: .actionsDidUpdate,
+            object: nil
+        )
     }
     
     /// 应用程序即将终止回调
@@ -91,6 +108,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 停止监控
         // Stop monitoring
         selectionMonitor?.stopMonitoring()
+        
+        // 移除通知观察者
+        // Remove notification observers
+        NotificationCenter.default.removeObserver(self)
     }
     
     /// 应用程序支持突然终止
@@ -145,6 +166,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         controlPanelWindowController?.showWindow(nil)
         controlPanelWindowController?.window?.makeKeyAndOrderFront(nil)
     }
+    
+    /// 处理动作更新通知
+    /// Handle actions update notification
+    @objc private func actionsDidUpdate() {
+        // 如果当前有选中的文本，重新评估并刷新工具栏
+        // If there's currently selected text, re-evaluate and refresh the toolbar
+        guard let text = currentSelectedText,
+              let bounds = currentSelectionBounds else {
+            return
+        }
+        
+        let actions = ActionManager.shared.getMatchingActions(for: text)
+        
+        if !actions.isEmpty {
+            // 刷新工具栏显示的动作
+            // Refresh the toolbar with updated actions
+            toolbarController?.showToolbar(with: actions, at: bounds, selectedText: text)
+        } else {
+            // 如果没有匹配的动作了，隐藏工具栏
+            // If no matching actions anymore, hide the toolbar
+            toolbarController?.hideToolbar(force: true)
+            currentSelectedText = nil
+            currentSelectionBounds = nil
+        }
+    }
 }
 
 // MARK: - SelectionMonitorDelegate
@@ -158,7 +204,12 @@ extension AppDelegate: SelectionMonitorDelegate {
         }
         // 记录选择的文本
         // Log selected text
-    SelectionHistoryManager.shared.addSelection(text, bounds: bounds)
+        SelectionHistoryManager.shared.addSelection(text, bounds: bounds)
+        
+        // 保存当前选择状态
+        // Save current selection state
+        currentSelectedText = text
+        currentSelectionBounds = bounds
         
         // 检查是否符合用户配置的条件
         // Check if matches user-configured conditions
@@ -174,6 +225,11 @@ extension AppDelegate: SelectionMonitorDelegate {
     /// 当文本选择被取消时调用
     /// Called when text selection is cancelled
     func didCancelTextSelection() {
+        // 清除选择状态
+        // Clear selection state
+        currentSelectedText = nil
+        currentSelectionBounds = nil
+        
         // 隐藏工具栏
         // Hide toolbar
         toolbarController?.hideToolbar(force: true)

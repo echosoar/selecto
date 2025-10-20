@@ -489,10 +489,22 @@ private extension SelectionMonitor {
         case .appKit:
             return bounds
         case .accessibility:
-            guard let screen = screenContaining(bounds) else {
+            // Accessibility API uses origin at top-left of primary screen with Y increasing downward
+            // AppKit uses origin at bottom-left of primary screen with Y increasing upward
+            // We need to convert from Accessibility coordinates to AppKit coordinates
+            
+            // Find the primary screen (the one with origin at 0,0 in AppKit coordinates)
+            guard let primaryScreen = NSScreen.screens.first else {
                 return bounds
             }
-            let convertedY = screen.frame.maxY - (bounds.origin.y + bounds.height)
+            
+            // The total height from the bottom of the lowest screen to the top of the highest screen
+            // In Accessibility coordinates, Y=0 is at the top of the primary screen
+            // In AppKit coordinates, Y=0 is at the bottom of the primary screen
+            
+            // Convert from Accessibility to AppKit:
+            // AppKit Y = Primary Screen Height - Accessibility Y - Selection Height
+            let convertedY = primaryScreen.frame.height - bounds.origin.y - bounds.height
             return CGRect(x: bounds.origin.x, y: convertedY, width: bounds.width, height: bounds.height)
         }
     }
