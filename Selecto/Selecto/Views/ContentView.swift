@@ -260,6 +260,7 @@ struct ActionsView: View {
                     List(selection: $selectedAction) {
                         ForEach(actions) { action in
                             ActionRow(action: action)
+                                .id(action.id.uuidString + "_" + action.displayName)
                                 .tag(action)
                                 .contextMenu {
                                     Button("上移") {
@@ -294,6 +295,7 @@ struct ActionsView: View {
                                 deleteAction(toDelete)
                             }
                         )
+                        .id(action.id.uuidString + "_" + action.displayName + "_" + String(action.sortOrder))
                     } else {
                         Text("选择一个动作查看详情")
                             .foregroundColor(.secondary)

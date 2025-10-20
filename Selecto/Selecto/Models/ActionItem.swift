@@ -161,7 +161,18 @@ struct ActionItem: Codable, Identifiable {
 
 extension ActionItem: Hashable {
     static func == (lhs: ActionItem, rhs: ActionItem) -> Bool {
-        lhs.id == rhs.id
+        // 比较所有属性以确保 SwiftUI 能检测到变化
+        // Compare all properties to ensure SwiftUI detects changes
+        lhs.id == rhs.id &&
+        lhs.name == rhs.name &&
+        lhs.displayName == rhs.displayName &&
+        lhs.type == rhs.type &&
+        lhs.isEnabled == rhs.isEnabled &&
+        lhs.matchPattern == rhs.matchPattern &&
+        lhs.parameters == rhs.parameters &&
+        lhs.shortcut == rhs.shortcut &&
+        lhs.iconName == rhs.iconName &&
+        lhs.sortOrder == rhs.sortOrder
     }
     
     func hash(into hasher: inout Hasher) {
