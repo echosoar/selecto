@@ -56,10 +56,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Toolbar window controller
     private var toolbarController: ToolbarWindowController?
     
-    /// 控制面板窗口控制器
-    /// Control panel window controller
-    private var controlPanelWindowController: ControlPanelWindowController?
-    
     /// 当前选中的文本
     /// Current selected text
     private var currentSelectedText: String?
@@ -73,6 +69,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 应用程序启动完成回调
     /// Application did finish launching callback
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        // 隐藏主窗口（在启动时不显示）
+        // Hide main window on launch
+        NSApp.setActivationPolicy(.accessory)
+        
         // 设置状态栏图标
         // Setup status bar icon
         setupStatusBar()
@@ -159,12 +159,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 显示控制面板
     /// Show control panel window
     @objc private func showControlPanel() {
-        if controlPanelWindowController == nil {
-            controlPanelWindowController = ControlPanelWindowController()
-        }
+        // 切换激活策略以显示应用程序
+        // Switch activation policy to show application
+        NSApp.setActivationPolicy(.regular)
+        
+        // 激活主应用程序
+        // Activate main application
         NSApp.activate(ignoringOtherApps: true)
-        controlPanelWindowController?.showWindow(nil)
-        controlPanelWindowController?.window?.makeKeyAndOrderFront(nil)
+        
+        // 查找并显示主窗口（WindowGroup 创建的窗口）
+        // Find and show main window (created by WindowGroup)
+        if let mainWindow = NSApp.windows.first(where: { $0.contentViewController is NSHostingController<ContentView> }) {
+            mainWindow.makeKeyAndOrderFront(nil)
+        } else if let anyWindow = NSApp.windows.first {
+            // 如果没有找到 ContentView 窗口，显示第一个窗口
+            // If ContentView window not found, show first window
+            anyWindow.makeKeyAndOrderFront(nil)
+        }
     }
     
     /// 处理动作更新通知
