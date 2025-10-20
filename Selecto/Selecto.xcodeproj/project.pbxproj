@@ -11,7 +11,6 @@
 		1000000000000002 /* SelectionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000002 /* SelectionMonitor.swift */; };
 		1000000000000003 /* ToolbarWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000003 /* ToolbarWindowController.swift */; };
 		1000000000000004 /* ToolbarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000004 /* ToolbarView.swift */; };
-		1000000000000005 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000005 /* SettingsWindowController.swift */; };
 		1000000000000006 /* ActionItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000006 /* ActionItem.swift */; };
 		1000000000000007 /* ActionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000007 /* ActionManager.swift */; };
 		1000000000000008 /* ActionExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000008 /* ActionExecutor.swift */; };
@@ -27,7 +26,6 @@
 		2000000000000002 /* SelectionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionMonitor.swift; sourceTree = "<group>"; };
 		2000000000000003 /* ToolbarWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarWindowController.swift; sourceTree = "<group>"; };
 		2000000000000004 /* ToolbarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarView.swift; sourceTree = "<group>"; };
-		2000000000000005 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		2000000000000006 /* ActionItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionItem.swift; sourceTree = "<group>"; };
 		2000000000000007 /* ActionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionManager.swift; sourceTree = "<group>"; };
 		2000000000000008 /* ActionExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionExecutor.swift; sourceTree = "<group>"; };
@@ -67,7 +65,6 @@
 				2000000000000002 /* SelectionMonitor.swift */,
 				2000000000000003 /* ToolbarWindowController.swift */,
 				2000000000000004 /* ToolbarView.swift */,
-				2000000000000005 /* SettingsWindowController.swift */,
 				5000000000000004 /* Models */,
 				5000000000000005 /* Managers */,
 				5000000000000006 /* Views */,
@@ -186,7 +183,6 @@
 				1000000000000002 /* SelectionMonitor.swift in Sources */,
 				1000000000000003 /* ToolbarWindowController.swift in Sources */,
 				1000000000000004 /* ToolbarView.swift in Sources */,
-				1000000000000005 /* SettingsWindowController.swift in Sources */,
 				1000000000000006 /* ActionItem.swift in Sources */,
 				1000000000000007 /* ActionManager.swift in Sources */,
 				1000000000000008 /* ActionExecutor.swift in Sources */,

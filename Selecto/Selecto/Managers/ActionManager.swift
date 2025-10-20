@@ -8,6 +8,12 @@
 
 import Foundation
 
+/// 动作更新通知名称
+/// Action update notification name
+extension Notification.Name {
+    static let actionsDidUpdate = Notification.Name("com.selecto.actionsDidUpdate")
+}
+
 /// 动作管理器
 /// Action manager
 /// 负责管理和存储用户配置的动作
@@ -61,6 +67,7 @@ class ActionManager {
     func addAction(_ action: ActionItem) {
         actions.append(action)
         saveActions()
+        postActionsUpdateNotification()
     }
     
     /// 更新动作
@@ -70,6 +77,7 @@ class ActionManager {
         if let index = actions.firstIndex(where: { $0.id == action.id }) {
             actions[index] = action
             saveActions()
+            postActionsUpdateNotification()
         }
     }
     
@@ -79,6 +87,7 @@ class ActionManager {
     func deleteAction(withId id: UUID) {
         actions.removeAll { $0.id == id }
         saveActions()
+        postActionsUpdateNotification()
     }
     
     /// 重新排序动作
@@ -87,6 +96,7 @@ class ActionManager {
     func reorderActions(_ actions: [ActionItem]) {
         self.actions = actions
         saveActions()
+        postActionsUpdateNotification()
     }
     
     // MARK: - Private Methods
@@ -124,5 +134,11 @@ class ActionManager {
         } catch {
             print("保存动作配置失败 (Failed to save action configuration): \(error)")
         }
+    }
+    
+    /// 发送动作更新通知
+    /// Post actions update notification
+    private func postActionsUpdateNotification() {
+        NotificationCenter.default.post(name: .actionsDidUpdate, object: nil)
     }
 }

@@ -485,10 +485,19 @@ private extension CGRect {
 
 private extension SelectionMonitor {
     func normalizeBounds(_ bounds: CGRect, from coordinateSpace: SelectionCoordinateSpace) -> CGRect {
+        // 如果 bounds 的宽或高是 0，直接使用鼠标位置
+        // If bounds width or height is 0, use mouse position directly
+        if bounds.width == 0 || bounds.height == 0 {
+            let mouseLocation = NSEvent.mouseLocation
+            return CGRect(x: mouseLocation.x - 60, y: mouseLocation.y - 20, width: 160, height: 32)
+        }
+        
         switch coordinateSpace {
         case .appKit:
             return bounds
         case .accessibility:
+            // 辅助功能 API 坐标转换为 AppKit 坐标
+            // Convert Accessibility API coordinates to AppKit coordinates
             guard let screen = screenContaining(bounds) else {
                 return bounds
             }
