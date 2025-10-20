@@ -485,26 +485,23 @@ private extension CGRect {
 
 private extension SelectionMonitor {
     func normalizeBounds(_ bounds: CGRect, from coordinateSpace: SelectionCoordinateSpace) -> CGRect {
+        // 如果 bounds 的宽或高是 0，直接使用鼠标位置
+        // If bounds width or height is 0, use mouse position directly
+        if bounds.width == 0 || bounds.height == 0 {
+            let mouseLocation = NSEvent.mouseLocation
+            return CGRect(x: mouseLocation.x - 60, y: mouseLocation.y - 20, width: 160, height: 32)
+        }
+        
         switch coordinateSpace {
         case .appKit:
             return bounds
         case .accessibility:
-            // Accessibility API uses origin at top-left of primary screen with Y increasing downward
-            // AppKit uses origin at bottom-left of primary screen with Y increasing upward
-            // We need to convert from Accessibility coordinates to AppKit coordinates
-            
-            // Find the primary screen (the one with origin at 0,0 in AppKit coordinates)
-            guard let primaryScreen = NSScreen.screens.first else {
+            // 辅助功能 API 坐标转换为 AppKit 坐标
+            // Convert Accessibility API coordinates to AppKit coordinates
+            guard let screen = screenContaining(bounds) else {
                 return bounds
             }
-            
-            // The total height from the bottom of the lowest screen to the top of the highest screen
-            // In Accessibility coordinates, Y=0 is at the top of the primary screen
-            // In AppKit coordinates, Y=0 is at the bottom of the primary screen
-            
-            // Convert from Accessibility to AppKit:
-            // AppKit Y = Primary Screen Height - Accessibility Y - Selection Height
-            let convertedY = primaryScreen.frame.height - bounds.origin.y - bounds.height
+            let convertedY = screen.frame.maxY - (bounds.origin.y + bounds.height)
             return CGRect(x: bounds.origin.x, y: convertedY, width: bounds.width, height: bounds.height)
         }
     }
