@@ -321,7 +321,12 @@ struct ActionsView: View {
                 }
             }
         }
-    .onAppear(perform: ensureSelection)
+        .onAppear(perform: ensureSelection)
+        .onReceive(NotificationCenter.default.publisher(for: .actionsDidUpdate)) { _ in
+            // 当动作更新时刷新列表和详情
+            // Refresh list and details when actions are updated
+            refreshActions(selecting: selectedAction?.id)
+        }
     }
     
     /// 删除动作
@@ -817,65 +822,67 @@ struct ActionEditorView: View {
     }
     
     var body: some View {
-        Form {
-            Section(header: Text("基本信息")) {
-                TextField("名称", text: $name)
-                TextField("显示名称", text: $displayName)
-                
-                Picker("类型", selection: $type) {
-                    ForEach(ActionType.allCases, id: \.self) { type in
-                        Text(type.displayName).tag(type)
+        ScrollView {
+            Form {
+                Section(header: Text("基本信息")) {
+                    TextField("名称", text: $name)
+                    TextField("显示名称", text: $displayName)
+                    
+                    Picker("类型", selection: $type) {
+                        ForEach(ActionType.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type)
+                        }
                     }
+                    
+                    Toggle("启用", isOn: $isEnabled)
                 }
                 
-                Toggle("启用", isOn: $isEnabled)
-            }
-            
-            Section(header: Text("匹配条件")) {
-                TextField("正则表达式", text: $matchPattern)
-                    .font(.system(.body, design: .monospaced))
-                Text("留空表示匹配所有文本")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Section(header: Text("参数")) {
-                if type == .openURL {
-                    TextField("URL 模板", text: $urlParameter)
-                    Text("使用 {text} 作为占位符")
+                Section(header: Text("匹配条件")) {
+                    TextField("正则表达式", text: $matchPattern)
+                        .font(.system(.body, design: .monospaced))
+                    Text("留空表示匹配所有文本")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                } else if type == .executeScript {
-                    VStack(alignment: .leading, spacing: 8) {
-                        TextEditor(text: $scriptContent)
-                            .font(.system(.body, design: .monospaced))
-                            .frame(minHeight: 160)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.secondary.opacity(0.3))
-                            )
-                        Text("脚本将在 /bin/zsh 下执行，可使用 {text} 或 SELECTO_TEXT 环境变量获取选中文本")
+                }
+                
+                Section(header: Text("参数")) {
+                    if type == .openURL {
+                        TextField("URL 模板", text: $urlParameter)
+                        Text("使用 {text} 作为占位符")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                    } else if type == .executeScript {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextEditor(text: $scriptContent)
+                                .font(.system(.body, design: .monospaced))
+                                .frame(minHeight: 160)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.secondary.opacity(0.3))
+                                )
+                            Text("脚本将在 /bin/zsh 下执行，可使用 {text} 或 SELECTO_TEXT 环境变量获取选中文本")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
-            }
-            
-            HStack {
-                Button("取消") {
-                    dismiss()
-                }
-                .keyboardShortcut(.cancelAction)
                 
-                Spacer()
-                
-                Button("保存") {
-                    saveAction()
+                HStack {
+                    Button("取消") {
+                        dismiss()
+                    }
+                    .keyboardShortcut(.cancelAction)
+                    
+                    Spacer()
+                    
+                    Button("保存") {
+                        saveAction()
+                    }
+                    .keyboardShortcut(.defaultAction)
                 }
-                .keyboardShortcut(.defaultAction)
             }
+            .padding()
         }
-        .padding()
         .frame(width: 500, height: 400)
     }
     
