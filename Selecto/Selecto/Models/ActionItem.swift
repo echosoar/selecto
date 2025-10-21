@@ -150,137 +150,37 @@ struct ActionItem: Codable, Identifiable {
         return [
             ActionItem(
                 name: "search_google",
-                displayName: "打开 Google 搜索",
+                displayName: "搜索",
                 type: .openURL,
                 parameters: ["url": "https://www.google.com/search?q={text}"],
                 sortOrder: 0
             ),
             
-            // 1. IP信息查询
+            // P信息查询
             // IP Information Lookup
             ActionItem(
                 name: "ip_info",
-                displayName: "IP 信息",
+                displayName: "IP",
                 type: .executeScript,
                 matchPattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
                 parameters: ["script": """
-#!/bin/bash
-IP="{text}"
-echo "🔗 https://ipinfo.io/$IP"
-result=$(curl -s --connect-timeout 5 "https://ipinfo.io/$IP" 2>&1)
-if [ $? -eq 0 ]; then
-    echo "$result"
-else
-    echo "无法连接到 ipinfo.io"
-fi
+IP=$SELECTO_TEXT
+echo "https://ipinfo.io/$IP"
+curl -s --connect-timeout 5 "https://ipinfo.io/$IP"
 """],
                 sortOrder: 1
             ),
             
-            // 2. 驼峰转换
-            // Case Conversion
-            ActionItem(
-                name: "case_conversion",
-                displayName: "驼峰转换",
-                type: .executeScript,
-                matchPattern: "^[a-zA-Z][a-zA-Z0-9]*([ \\-_\\.][a-zA-Z0-9]+)+$",
-                parameters: ["script": """
-#!/bin/bash
-TEXT="{text}"
-
-# 将文本分割成单词数组
-words=()
-IFS='[-_ .]' read -ra ADDR <<< "$TEXT"
-for word in "${ADDR[@]}"; do
-    if [ ! -z "$word" ]; then
-        words+=("$word")
-    fi
-done
-
-# 1. 空格连接
-space_case=""
-for word in "${words[@]}"; do
-    if [ -z "$space_case" ]; then
-        space_case="${word,,}"
-    else
-        space_case="$space_case ${word,,}"
-    fi
-done
-echo "空格: $space_case"
-
-# 2. 下划线连接
-underscore_case=""
-for word in "${words[@]}"; do
-    if [ -z "$underscore_case" ]; then
-        underscore_case="${word,,}"
-    else
-        underscore_case="${underscore_case}_${word,,}"
-    fi
-done
-echo "下划线: $underscore_case"
-
-# 3. 连字符连接
-hyphen_case=""
-for word in "${words[@]}"; do
-    if [ -z "$hyphen_case" ]; then
-        hyphen_case="${word,,}"
-    else
-        hyphen_case="$hyphen_case-${word,,}"
-    fi
-done
-echo "连字符: $hyphen_case"
-
-# 4. 大驼峰 (PascalCase)
-pascal_case=""
-for word in "${words[@]}"; do
-    first_char="${word:0:1}"
-    rest="${word:1}"
-    pascal_case="$pascal_case${first_char^^}${rest,,}"
-done
-echo "大驼峰: $pascal_case"
-
-# 5. 小驼峰 (camelCase)
-camel_case=""
-first=true
-for word in "${words[@]}"; do
-    if [ "$first" = true ]; then
-        camel_case="${word,,}"
-        first=false
-    else
-        first_char="${word:0:1}"
-        rest="${word:1}"
-        camel_case="$camel_case${first_char^^}${rest,,}"
-    fi
-done
-echo "小驼峰: $camel_case"
-
-# 6. 全小写
-lowercase=""
-for word in "${words[@]}"; do
-    lowercase="$lowercase${word,,}"
-done
-echo "全小写: $lowercase"
-
-# 7. 全大写
-uppercase=""
-for word in "${words[@]}"; do
-    uppercase="$uppercase${word^^}"
-done
-echo "全大写: $uppercase"
-"""],
-                sortOrder: 2
-            ),
-            
-            // 3. 时间转换
+            // 时间转换
             // Time Conversion
             ActionItem(
                 name: "time_conversion",
-                displayName: "时间转换",
+                displayName: "时间",
                 type: .executeScript,
                 matchPattern: "^(\\d{10}|\\d{13}|\\d{4}[-/]\\d{2}[-/]\\d{2}(\\s+\\d{2}:\\d{2}(:\\d{2})?)?)$",
                 parameters: ["script": """
 #!/bin/bash
-TEXT="{text}"
+TEXT=$SELECTO_TEXT
 
 # 检测时间格式并转换为13位时间戳
 if [[ "$TEXT" =~ ^[0-9]{10}$ ]]; then
@@ -342,16 +242,16 @@ echo "距年末: ${days_to_end}天"
                 sortOrder: 3
             ),
             
-            // 4. 字符长度
+            // 字符长度
             // String Length
             ActionItem(
                 name: "string_length",
-                displayName: "字符长度",
+                displayName: "长度",
                 type: .executeScript,
                 matchPattern: "^.{4,}$",
                 parameters: ["script": """
 #!/bin/bash
-TEXT="{text}"
+TEXT=$SELECTO_TEXT
 length=${#TEXT}
 echo "字符长度: $length"
 """],
@@ -362,12 +262,12 @@ echo "字符长度: $length"
             // Number Formatting
             ActionItem(
                 name: "number_format",
-                displayName: "数字格式化",
+                displayName: "数字",
                 type: .executeScript,
                 matchPattern: "^([1-9][0-9]{2,}|[1-9][0-9]{2}\\.[0-9]+)$",
                 parameters: ["script": """
 #!/bin/bash
-TEXT="{text}"
+TEXT=$SELECTO_TEXT
 
 # 检查是否大于100
 if (( $(echo "$TEXT > 100" | bc -l) )); then
@@ -386,43 +286,23 @@ if (( $(echo "$TEXT > 100" | bc -l) )); then
         echo "小数位数: 0"
     fi
     
-    # 千分位分隔
-    thousands=$(printf "%'d" "$integer_part" 2>/dev/null || echo "$integer_part" | sed ':a;s/\\B[0-9]\\{3\\}\\>/,&/;ta')
-    if [[ "$TEXT" == *.* ]]; then
-        echo "千分位: $thousands.$decimal_part"
-    else
-        echo "千分位: $thousands"
-    fi
-    
-    # 中文数字转换（仅整数部分）
-    num=$integer_part
-    chinese=""
-    units=("" "十" "百" "千" "万" "十万" "百万" "千万" "亿")
-    digits=("零" "一" "二" "三" "四" "五" "六" "七" "八" "九")
-    
-    # 简化的中文数字转换
-    len=${#num}
-    for (( i=0; i<$len; i++ )); do
-        digit="${num:$i:1}"
-        pos=$((len - i - 1))
-        
-        if [ "$digit" != "0" ]; then
-            chinese="$chinese${digits[$digit]}"
-            if [ $pos -gt 0 ] && [ $pos -lt 9 ]; then
-                chinese="$chinese${units[$pos]}"
-            fi
-        elif [ ${#chinese} -gt 0 ] && [ "${chinese: -1}" != "零" ]; then
-            chinese="${chinese}零"
-        fi
+    number=$SELECTO_TEXT
+    # 实现每三位用逗号分隔
+    formatted=""
+    while [ ${#number} -gt 3 ]; do
+        # 提取最后三位
+        formatted=",$(echo "$number" | tail -c 4)$formatted"
+        # 去掉最后三位
+        number=$(echo "$number" | rev | cut -c 4- | rev)
     done
-    
-    # 去除末尾的零
-    chinese=$(echo "$chinese" | sed 's/零*$//')
-    echo "中文: $chinese"
-    
+    # 拼接剩余的部分（不足三位）
+    formatted="$number$formatted"
+    # 输出结果
+    echo "$formatted"
+
     # 16进制转换
     hex=$(printf "%X" "$integer_part")
-    echo "十六进制: 0x$hex"
+    echo "0x$hex"
 else
     echo "数字小于等于100，不显示格式化信息"
 fi
