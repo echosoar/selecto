@@ -453,6 +453,14 @@ struct PreferencesView: View {
     /// Application preferences storage
     @ObservedObject private var preferences = AppPreferences.shared
 
+    /// 新排除应用的 Bundle ID
+    /// Bundle ID for new excluded app
+    @State private var newExcludedAppBundleId: String = ""
+
+    /// 是否显示添加排除应用的弹窗
+    /// Whether to show add excluded app dialog
+    @State private var showingAddExcludedApp = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             Text("偏好设置")
@@ -460,7 +468,7 @@ struct PreferencesView: View {
                 .bold()
 
             GroupBox(label: Label("文本选择", systemImage: "text.cursor")) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 12) {
                     Toggle("开启强制选词", isOn: $preferences.forceSelectionEnabled)
                         .toggleStyle(.switch)
 
@@ -468,6 +476,55 @@ struct PreferencesView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    if preferences.forceSelectionEnabled {
+                        Divider()
+                            .padding(.vertical, 4)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("排除应用")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Button(action: { showingAddExcludedApp = true }) {
+                                    Image(systemName: "plus.circle")
+                                }
+                                .buttonStyle(.borderless)
+                                .help("添加排除应用")
+                            }
+
+                            Text("在以下应用中将不会使用强制选词功能")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            if preferences.forceSelectionExcludedApps.isEmpty {
+                                Text("暂无排除的应用")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .italic()
+                                    .padding(.vertical, 4)
+                            } else {
+                                ForEach(preferences.forceSelectionExcludedApps, id: \.self) { bundleId in
+                                    HStack {
+                                        Text(bundleId)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                        Spacer()
+                                        Button(action: {
+                                            removeExcludedApp(bundleId)
+                                        }) {
+                                            Image(systemName: "trash")
+                                                .foregroundColor(.red)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .help("删除")
+                                    }
+                                    .padding(.vertical, 2)
+                                }
+                            }
+                        }
+                    }
                 }
                 .padding()
             }
@@ -476,6 +533,58 @@ struct PreferencesView: View {
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .sheet(isPresented: $showingAddExcludedApp) {
+            VStack(spacing: 20) {
+                Text("添加排除应用")
+                    .font(.headline)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("输入应用的 Bundle ID")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("例如: com.apple.Terminal", text: $newExcludedAppBundleId)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("您可以在应用包的 Info.plist 中找到 Bundle ID")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .italic()
+                }
+
+                HStack {
+                    Button("取消") {
+                        showingAddExcludedApp = false
+                        newExcludedAppBundleId = ""
+                    }
+
+                    Button("添加") {
+                        addExcludedApp()
+                    }
+                    .disabled(newExcludedAppBundleId.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+            .padding()
+            .frame(width: 400)
+        }
+    }
+
+    private func addExcludedApp() {
+        let trimmedId = newExcludedAppBundleId.trimmingCharacters(in: .whitespaces)
+        guard !trimmedId.isEmpty else { return }
+        guard !preferences.forceSelectionExcludedApps.contains(trimmedId) else {
+            newExcludedAppBundleId = ""
+            showingAddExcludedApp = false
+            return
+        }
+        preferences.forceSelectionExcludedApps.append(trimmedId)
+        newExcludedAppBundleId = ""
+        showingAddExcludedApp = false
+    }
+
+    private func removeExcludedApp(_ bundleId: String) {
+        preferences.forceSelectionExcludedApps.removeAll { $0 == bundleId }
     }
 }
 

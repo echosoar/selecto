@@ -190,8 +190,10 @@ class ToolbarWindowController: NSWindowController {
               let screen = screenForSelection(bounds) ?? NSScreen.main else {
             return nil
         }
-        let contentWidth = min(max(preferredSize.width + 20, 180), 500)
-        let contentHeight = max(preferredSize.height + 20, 44)
+        // 工具栏视图内部已有 10px 的边距，window 大小应该等于内容大小
+        // ToolbarView already has 10px internal padding, window size should match content size
+        let contentWidth = min(max(preferredSize.width, 180), 500)
+        let contentHeight = max(preferredSize.height, 44)
         let screenFrame = screen.visibleFrame
         let horizontalPadding: CGFloat = 10
         var xPosition = bounds.midX - contentWidth / 2
