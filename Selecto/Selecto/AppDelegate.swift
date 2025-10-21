@@ -40,7 +40,7 @@ struct SelectoApp: App {
 
 /// 应用代理类
 /// App delegate class
-class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate {
     
     // MARK: - Properties
     
@@ -182,19 +182,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
     
-    /// 窗口即将关闭时的回调
-    /// Called when window is about to close
-    func windowWillClose(_ notification: Notification) {
-        // 检查是否是主窗口关闭
-        // Check if it's the main window closing
-        if let window = notification.object as? NSWindow,
-           window.contentViewController is NSHostingController<ContentView> {
-            // 恢复为后台模式，隐藏应用图标和窗口
-            // Revert to accessory mode, hiding the app icon and window
-            NSApp.setActivationPolicy(.accessory)
-        }
-    }
-    
     /// 处理动作更新通知
     /// Handle actions update notification
     @objc private func actionsDidUpdate() {
@@ -261,6 +248,26 @@ extension AppDelegate: SelectionMonitorDelegate {
         // 隐藏工具栏
         // Hide toolbar
         toolbarController?.hideToolbar(force: true)
+    }
+}
+
+// MARK: - NSWindowDelegate
+
+extension AppDelegate: NSWindowDelegate {
+    /// 窗口即将关闭时调用
+    /// Called when window is about to close
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        // 隐藏窗口而不是关闭
+        // Hide window instead of closing
+        sender.orderOut(nil)
+
+        // 切换回 accessory 模式，从 Dock 中隐藏
+        // Switch back to accessory mode to hide from Dock
+        NSApp.setActivationPolicy(.accessory)
+
+        // 返回 false 以阻止窗口实际关闭
+        // Return false to prevent actual window closure
+        return false
     }
 }
 
