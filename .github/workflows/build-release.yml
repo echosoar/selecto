@@ -59,9 +59,7 @@ jobs:
             -configuration Release \
             -arch arm64 \
             -derivedDataPath build-arm64 \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY="-"
       
       - name: Build for x86_64
         run: |
@@ -70,9 +68,7 @@ jobs:
             -configuration Release \
             -arch x86_64 \
             -derivedDataPath build-x86_64 \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY="-"
       
       - name: Create Universal Binary
         run: |
@@ -90,6 +86,12 @@ jobs:
           
           # Verify the universal binary
           lipo -info build-universal/Build/Products/Release/Selecto.app/Contents/MacOS/Selecto
+          
+          # Ad-hoc sign the universal binary
+          codesign --force --deep --sign - build-universal/Build/Products/Release/Selecto.app
+          
+          # Verify the signature
+          codesign --verify --verbose build-universal/Build/Products/Release/Selecto.app
       
       - name: Create DMG
         run: |
@@ -122,6 +124,9 @@ jobs:
           # Copy the app to the temp directory
           cp -R build-arm64/Build/Products/Release/Selecto.app dmg-arm64-temp/
           
+          # Ad-hoc sign the ARM64 binary
+          codesign --force --deep --sign - dmg-arm64-temp/Selecto.app
+          
           # Create a symbolic link to Applications folder
           ln -s /Applications dmg-arm64-temp/Applications
           
@@ -142,6 +147,9 @@ jobs:
           
           # Copy the app to the temp directory
           cp -R build-x86_64/Build/Products/Release/Selecto.app dmg-x86-temp/
+          
+          # Ad-hoc sign the x86_64 binary
+          codesign --force --deep --sign - dmg-x86-temp/Selecto.app
           
           # Create a symbolic link to Applications folder
           ln -s /Applications dmg-x86-temp/Applications
@@ -176,6 +184,20 @@ jobs:
             2. 打开 DMG 文件 / Open the DMG file
             3. 将 Selecto.app 拖到 Applications 文件夹 / Drag Selecto.app to Applications folder
             4. 首次运行时授予必要的权限 / Grant necessary permissions on first run
+            
+            ### 如果提示"已损坏" / If "Damaged" Warning Appears
+            
+            由于应用未经过 Apple 公证，首次打开时可能提示"已损坏"。请在终端执行以下命令：
+            
+            If the app shows as "damaged" because it's not notarized, run this command in Terminal:
+            
+            ```bash
+            xattr -cr /Applications/Selecto.app
+            ```
+            
+            然后右键点击应用，选择"打开"即可正常使用。
+            
+            Then right-click the app and select "Open" to run it normally.
             
             构建时间 / Build time: ${{ github.event.head_commit.timestamp }}
           draft: false
