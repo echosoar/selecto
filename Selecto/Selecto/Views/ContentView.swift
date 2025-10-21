@@ -18,38 +18,41 @@ struct ContentView: View {
     @State private var selectedTab = 0
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // 权限设置页
-            // Permissions tab
-            PermissionsView()
-                .tabItem {
-                    Label("授权", systemImage: "lock.shield")
-                }
-                .tag(0)
+        VStack(spacing: 0) {
+            // 固定在顶部的标签栏
+            // Fixed tab bar at the top
+            Picker("", selection: $selectedTab) {
+                Label("授权", systemImage: "lock.shield").tag(0)
+                Label("动作", systemImage: "slider.horizontal.3").tag(1)
+                Label("设置", systemImage: "gearshape").tag(2)
+                Label("日志", systemImage: "clock").tag(3)
+            }
+            .pickerStyle(.segmented)
+            .padding()
+            .background(Color(NSColor.windowBackgroundColor))
             
-            // 动作配置页
-            // Actions tab
-            ActionsView()
-                .tabItem {
-                    Label("动作", systemImage: "slider.horizontal.3")
-                }
-                .tag(1)
-
-            // 设置页
-            // Settings tab
-            PreferencesView()
-                .tabItem {
-                    Label("设置", systemImage: "gearshape")
-                }
-                .tag(2)
+            Divider()
             
-            // 历史记录页
-            // History tab
-            HistoryView()
-                .tabItem {
-                    Label("日志", systemImage: "clock")
+            // 可滚动的内容区域
+            // Scrollable content area
+            ScrollView {
+                Group {
+                    switch selectedTab {
+                    case 0:
+                        PermissionsView()
+                    case 1:
+                        ActionsView()
+                    case 2:
+                        PreferencesView()
+                    case 3:
+                        HistoryView()
+                    default:
+                        PermissionsView()
+                    }
                 }
-                .tag(3)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 800, minHeight: 600)
     }
@@ -80,7 +83,7 @@ struct PermissionsView: View {
             Text("授权")
                 .font(.largeTitle)
                 .bold()
-                .padding(.top, 40)
+                .padding(.top, 20)
             
             Text("Selecto 需要以下授权才能正常工作")
                 .font(.body)
@@ -88,44 +91,44 @@ struct PermissionsView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
             
-            Spacer()
-            
-            // 辅助功能权限
-            // Accessibility permission
-            PermissionCard(
-                title: "辅助功能",
-                description: "允许 Selecto 监控文本选择",
-                isGranted: hasAccessibilityPermission,
-                icon: "hand.point.up.braille"
-            ) {
-                requestAccessibilityPermission()
-            }
-            
-            // 屏幕录制权限
-            // Screen recording permission
-            if #available(macOS 10.15, *) {
+            VStack(spacing: 16) {
+                // 辅助功能权限
+                // Accessibility permission
                 PermissionCard(
-                    title: "屏幕录制",
-                    description: "允许 Selecto 获取选中文本的位置",
-                    isGranted: hasScreenRecordingPermission,
-                    icon: "rectangle.on.rectangle"
+                    title: "辅助功能",
+                    description: "允许 Selecto 监控文本选择",
+                    isGranted: hasAccessibilityPermission,
+                    icon: "hand.point.up.braille"
                 ) {
-                    requestScreenRecordingPermission()
+                    requestAccessibilityPermission()
+                }
+                
+                // 屏幕录制权限
+                // Screen recording permission
+                if #available(macOS 10.15, *) {
+                    PermissionCard(
+                        title: "屏幕录制",
+                        description: "允许 Selecto 获取选中文本的位置",
+                        isGranted: hasScreenRecordingPermission,
+                        icon: "rectangle.on.rectangle"
+                    ) {
+                        requestScreenRecordingPermission()
+                    }
+                }
+                
+                // 自动化权限
+                // Automation permission
+                PermissionCard(
+                    title: "自动化 (AppleScript)",
+                    description: "允许 Selecto 使用 AppleScript 获取文本（Chrome 等浏览器）",
+                    isGranted: hasAutomationPermission,
+                    icon: "terminal",
+                    alwaysShowButton: true
+                ) {
+                    requestAutomationPermission()
                 }
             }
-            
-            // 自动化权限
-            // Automation permission
-            PermissionCard(
-                title: "自动化 (AppleScript)",
-                description: "允许 Selecto 使用 AppleScript 获取文本（Chrome 等浏览器）",
-                isGranted: hasAutomationPermission,
-                icon: "terminal"
-            ) {
-                requestAutomationPermission()
-            }
-            
-            Spacer()
+            .padding(.vertical, 20)
             
             if hasAccessibilityPermission {
                 VStack(spacing: 10) {
@@ -144,11 +147,15 @@ struct PermissionsView: View {
                 .padding()
             }
             
-            Spacer()
+            Spacer(minLength: 40)
         }
         .padding()
+        .frame(maxWidth: .infinity, alignment: .top)
         .onAppear {
             checkPermissions()
+            // 主动触发自动化权限请求
+            // Proactively trigger automation permission request
+            triggerAutomationPermission()
         }
         .onReceive(timer) { _ in
             checkPermissions()
@@ -192,6 +199,25 @@ struct PermissionsView: View {
     private func requestAutomationPermission() {
         PermissionManager.shared.openSystemPreferences(for: .automation)
     }
+    
+    /// 主动触发自动化权限请求
+    /// Proactively trigger automation permission request by executing a simple AppleScript
+    private func triggerAutomationPermission() {
+        DispatchQueue.global(qos: .background).async {
+            let scriptSource = """
+            tell application "System Events"
+                return name
+            end tell
+            """
+            
+            if let script = NSAppleScript(source: scriptSource) {
+                var errorDict: NSDictionary?
+                _ = script.executeAndReturnError(&errorDict)
+                // 忽略结果，只是为了触发权限请求
+                // Ignore result, just to trigger permission request
+            }
+        }
+    }
 }
 
 /// 权限卡片视图
@@ -201,7 +227,17 @@ struct PermissionCard: View {
     let description: String
     let isGranted: Bool
     let icon: String
+    let alwaysShowButton: Bool
     let action: () -> Void
+    
+    init(title: String, description: String, isGranted: Bool, icon: String, alwaysShowButton: Bool = false, action: @escaping () -> Void) {
+        self.title = title
+        self.description = description
+        self.isGranted = isGranted
+        self.icon = icon
+        self.alwaysShowButton = alwaysShowButton
+        self.action = action
+    }
     
     var body: some View {
         HStack(spacing: 20) {
@@ -225,7 +261,14 @@ struct PermissionCard: View {
             
             // 状态和按钮
             // Status and button
-            if isGranted {
+            if alwaysShowButton {
+                Button(action: action) {
+                    Text("设置")
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+            } else if isGranted {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
