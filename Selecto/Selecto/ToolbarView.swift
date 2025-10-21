@@ -263,6 +263,23 @@ class ToolbarView: NSView {
         objc_setAssociatedObject(copyButton, &AssociatedKeys.resultText, text, .OBJC_ASSOCIATION_RETAIN)
         container.addArrangedSubview(copyButton)
         
+        // 如果文本以 http 开头，添加打开链接按钮
+        // If text starts with http, add open link button
+        if text.lowercased().hasPrefix("http://") || text.lowercased().hasPrefix("https://") {
+            let openLinkButton: NSButton
+            if let symbol = NSImage(systemSymbolName: "arrow.up.forward.app", accessibilityDescription: "打开链接") {
+                openLinkButton = NSButton(image: symbol, target: self, action: #selector(openResultLink(_:)))
+            } else {
+                openLinkButton = NSButton(title: "打开", target: self, action: #selector(openResultLink(_:)))
+            }
+            openLinkButton.isBordered = false
+            openLinkButton.toolTip = "打开链接"
+            openLinkButton.contentTintColor = NSColor.systemBlue
+            openLinkButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+            objc_setAssociatedObject(openLinkButton, &AssociatedKeys.resultText, text, .OBJC_ASSOCIATION_RETAIN)
+            container.addArrangedSubview(openLinkButton)
+        }
+        
         return container
     }
     
@@ -271,6 +288,12 @@ class ToolbarView: NSView {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
+    }
+    
+    @objc private func openResultLink(_ sender: NSButton) {
+        guard let text = objc_getAssociatedObject(sender, &AssociatedKeys.resultText) as? String,
+              let url = URL(string: text) else { return }
+        NSWorkspace.shared.open(url)
     }
     
     /// 动作按钮点击处理

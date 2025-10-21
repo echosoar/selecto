@@ -398,6 +398,15 @@ class SelectionMonitor {
             return nil
         }
 
+        // 检查当前应用是否在排除列表中
+        // Check if current app is in the excluded list
+        if let frontmostApp = NSWorkspace.shared.frontmostApplication,
+           let bundleId = frontmostApp.bundleIdentifier {
+            if AppPreferences.shared.forceSelectionExcludedApps.contains(bundleId) {
+                return nil
+            }
+        }
+
         let scriptSource = """
         set previousClipboard to (the clipboard as record)
         tell application "System Events"

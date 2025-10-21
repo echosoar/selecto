@@ -23,11 +23,23 @@ final class AppPreferences: ObservableObject {
         }
     }
 
+    /// 强制选词排除的应用列表（Bundle ID）
+    /// List of excluded applications (Bundle IDs) for forced selection
+    @Published var forceSelectionExcludedApps: [String] {
+        didSet {
+            if oldValue != forceSelectionExcludedApps {
+                userDefaults.set(forceSelectionExcludedApps, forKey: Self.forceSelectionExcludedAppsKey)
+            }
+        }
+    }
+
     private let userDefaults: UserDefaults
     private static let forceSelectionKey = "ForceSelectionEnabled"
+    private static let forceSelectionExcludedAppsKey = "ForceSelectionExcludedApps"
 
     private init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
         forceSelectionEnabled = userDefaults.object(forKey: Self.forceSelectionKey) as? Bool ?? false
+        forceSelectionExcludedApps = userDefaults.object(forKey: Self.forceSelectionExcludedAppsKey) as? [String] ?? []
     }
 }
