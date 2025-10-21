@@ -1,0 +1,188 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get latest tag and calculate next version
+        id: version
+        run: |
+          # Get the latest tag that matches version pattern
+          LATEST_TAG=$(git tag -l "v*.*.*" --sort=-v:refname | head -n 1)
+          
+          if [ -z "$LATEST_TAG" ]; then
+            # No tags found, start from 0.1.0
+            NEW_VERSION="0.1.0"
+          else
+            # Extract version numbers
+            VERSION=${LATEST_TAG#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            
+            # Increment patch version
+            PATCH=$((PATCH + 1))
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          fi
+          
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version: $NEW_VERSION"
+      
+      - name: Update project version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Update version in Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" Selecto/Selecto/Info.plist
+          
+          # Update MARKETING_VERSION in project.pbxproj
+          sed -i '' "s/MARKETING_VERSION = [^;]*/MARKETING_VERSION = $VERSION/" Selecto/Selecto.xcodeproj/project.pbxproj
+          
+          echo "Updated version to $VERSION"
+      
+      - name: Build for ARM64
+        run: |
+          xcodebuild -project Selecto/Selecto.xcodeproj \
+            -scheme Selecto \
+            -configuration Release \
+            -arch arm64 \
+            -derivedDataPath build-arm64 \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+      
+      - name: Build for x86_64
+        run: |
+          xcodebuild -project Selecto/Selecto.xcodeproj \
+            -scheme Selecto \
+            -configuration Release \
+            -arch x86_64 \
+            -derivedDataPath build-x86_64 \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+      
+      - name: Create Universal Binary
+        run: |
+          # Create output directory
+          mkdir -p build-universal/Build/Products/Release
+          
+          # Copy the app bundle from ARM64 build
+          cp -R build-arm64/Build/Products/Release/Selecto.app build-universal/Build/Products/Release/
+          
+          # Create universal binary by combining both architectures
+          lipo -create \
+            build-arm64/Build/Products/Release/Selecto.app/Contents/MacOS/Selecto \
+            build-x86_64/Build/Products/Release/Selecto.app/Contents/MacOS/Selecto \
+            -output build-universal/Build/Products/Release/Selecto.app/Contents/MacOS/Selecto
+          
+          # Verify the universal binary
+          lipo -info build-universal/Build/Products/Release/Selecto.app/Contents/MacOS/Selecto
+      
+      - name: Create DMG
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Create a temporary directory for DMG contents
+          mkdir -p dmg-temp
+          
+          # Copy the app to the temp directory
+          cp -R build-universal/Build/Products/Release/Selecto.app dmg-temp/
+          
+          # Create a symbolic link to Applications folder
+          ln -s /Applications dmg-temp/Applications
+          
+          # Create the DMG
+          hdiutil create -volname "Selecto $VERSION" \
+            -srcfolder dmg-temp \
+            -ov -format UDZO \
+            "Selecto-$VERSION-universal.dmg"
+          
+          echo "DMG created: Selecto-$VERSION-universal.dmg"
+      
+      - name: Create ARM64-only DMG
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Create a temporary directory for DMG contents
+          mkdir -p dmg-arm64-temp
+          
+          # Copy the app to the temp directory
+          cp -R build-arm64/Build/Products/Release/Selecto.app dmg-arm64-temp/
+          
+          # Create a symbolic link to Applications folder
+          ln -s /Applications dmg-arm64-temp/Applications
+          
+          # Create the DMG
+          hdiutil create -volname "Selecto $VERSION ARM64" \
+            -srcfolder dmg-arm64-temp \
+            -ov -format UDZO \
+            "Selecto-$VERSION-arm64.dmg"
+          
+          echo "ARM64 DMG created: Selecto-$VERSION-arm64.dmg"
+      
+      - name: Create x86_64-only DMG
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Create a temporary directory for DMG contents
+          mkdir -p dmg-x86-temp
+          
+          # Copy the app to the temp directory
+          cp -R build-x86_64/Build/Products/Release/Selecto.app dmg-x86-temp/
+          
+          # Create a symbolic link to Applications folder
+          ln -s /Applications dmg-x86-temp/Applications
+          
+          # Create the DMG
+          hdiutil create -volname "Selecto $VERSION Intel" \
+            -srcfolder dmg-x86-temp \
+            -ov -format UDZO \
+            "Selecto-$VERSION-x86_64.dmg"
+          
+          echo "x86_64 DMG created: Selecto-$VERSION-x86_64.dmg"
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            ## Selecto ${{ steps.version.outputs.version }}
+            
+            自动构建的 macOS 版本 / Automated macOS Build
+            
+            ### 下载 / Downloads
+            
+            - **Selecto-${{ steps.version.outputs.version }}-universal.dmg** - 通用版本（支持 Apple Silicon 和 Intel 芯片）/ Universal build (supports both Apple Silicon and Intel)
+            - **Selecto-${{ steps.version.outputs.version }}-arm64.dmg** - ARM64 版本（仅支持 Apple Silicon）/ ARM64 build (Apple Silicon only)
+            - **Selecto-${{ steps.version.outputs.version }}-x86_64.dmg** - Intel 版本（仅支持 Intel 芯片）/ Intel build (Intel only)
+            
+            ### 安装方法 / Installation
+            
+            1. 下载适合您 Mac 的 DMG 文件 / Download the appropriate DMG file for your Mac
+            2. 打开 DMG 文件 / Open the DMG file
+            3. 将 Selecto.app 拖到 Applications 文件夹 / Drag Selecto.app to Applications folder
+            4. 首次运行时授予必要的权限 / Grant necessary permissions on first run
+            
+            构建时间 / Build time: ${{ github.event.head_commit.timestamp }}
+          draft: false
+          prerelease: false
+          files: |
+            Selecto-${{ steps.version.outputs.version }}-universal.dmg
+            Selecto-${{ steps.version.outputs.version }}-arm64.dmg
+            Selecto-${{ steps.version.outputs.version }}-x86_64.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

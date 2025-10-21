@@ -51,6 +51,16 @@ Selecto 需要以下系统权限才能正常工作：
 
 ### 安装与使用
 
+#### 从 Release 下载（推荐）
+
+访问 [Releases 页面](https://github.com/echosoar/selecto/releases) 下载最新版本的 DMG 文件：
+
+- **Universal (通用版)** - 支持 Apple Silicon (M1/M2/M3) 和 Intel 芯片
+- **ARM64** - 仅支持 Apple Silicon (M1/M2/M3)
+- **x86_64** - 仅支持 Intel 芯片
+
+下载后双击 DMG 文件，将 Selecto.app 拖到 Applications 文件夹即可。
+
 #### 从源码构建
 
 ```bash
@@ -126,6 +136,23 @@ Selecto/
 - 遵循 Swift 最佳实践
 - 良好的错误处理
 
+### 自动化发布
+
+项目使用 GitHub Actions 实现自动化构建和发布流程：
+
+- ✅ **自动触发** - main 分支有新提交时自动触发构建
+- 🏗️ **多架构支持** - 自动构建 ARM64、x86_64 和通用二进制版本
+- 📦 **DMG 打包** - 自动生成三个版本的 DMG 安装包
+- 🔢 **版本管理** - 从 0.1.0 开始自动递增 patch 版本号
+- 🚀 **自动发布** - 构建完成后自动创建 GitHub Release
+
+每次推送到 main 分支时，CI/CD 流程会：
+1. 自动计算下一个版本号（如 0.1.0 → 0.1.1）
+2. 更新项目文件中的版本号
+3. 构建三种架构的应用程序（Universal、ARM64、x86_64）
+4. 创建对应的 DMG 安装包
+5. 发布到 GitHub Releases 并附带所有 DMG 文件
+
 ---
 
 ## English
@@ -174,6 +201,16 @@ Selecto requires the following system permissions to function properly:
 On first run, the app will automatically guide you to grant these permissions.
 
 ### Installation & Usage
+
+#### Download from Releases (Recommended)
+
+Visit the [Releases page](https://github.com/echosoar/selecto/releases) to download the latest DMG file:
+
+- **Universal** - Supports both Apple Silicon (M1/M2/M3) and Intel chips
+- **ARM64** - Apple Silicon (M1/M2/M3) only
+- **x86_64** - Intel chips only
+
+After downloading, double-click the DMG file and drag Selecto.app to the Applications folder.
 
 #### Build from Source
 
@@ -249,6 +286,23 @@ Selecto/
 - Clear code structure and naming conventions
 - Follows Swift best practices
 - Good error handling
+
+### Automated Release
+
+The project uses GitHub Actions for automated build and release workflow:
+
+- ✅ **Auto-trigger** - Automatically triggers build on new commits to main branch
+- 🏗️ **Multi-architecture** - Automatically builds ARM64, x86_64, and Universal binaries
+- 📦 **DMG Packaging** - Automatically generates three versions of DMG installers
+- 🔢 **Version Management** - Auto-increments patch version starting from 0.1.0
+- 🚀 **Auto Release** - Automatically creates GitHub Release after build
+
+Every push to the main branch triggers the CI/CD pipeline to:
+1. Automatically calculate the next version number (e.g., 0.1.0 → 0.1.1)
+2. Update version numbers in project files
+3. Build the application for three architectures (Universal, ARM64, x86_64)
+4. Create corresponding DMG installers
+5. Publish to GitHub Releases with all DMG files attached
 
 ### License
 
