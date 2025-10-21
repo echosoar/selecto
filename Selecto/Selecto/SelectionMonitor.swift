@@ -409,13 +409,24 @@ class SelectionMonitor {
 
         let scriptSource = """
         set previousClipboard to (the clipboard as record)
+        set previousText to ""
+        try
+            set previousText to (the clipboard as text)
+        end try
         tell application "System Events"
             keystroke "c" using {command down}
         end tell
         delay 0.05
-        set selectedText to the (the clipboard as text)
+        set newText to ""
+        try
+            set newText to (the clipboard as text)
+        end try
         set the clipboard to previousClipboard
-        return selectedText
+        if newText is equal to previousText then
+            return ""
+        else
+            return newText
+        end if
         """
 
         guard let script = NSAppleScript(source: scriptSource) else {

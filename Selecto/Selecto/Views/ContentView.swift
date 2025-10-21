@@ -67,6 +67,10 @@ struct PermissionsView: View {
     /// Screen recording permission status
     @State private var hasScreenRecordingPermission = false
     
+    /// 自动化权限状态
+    /// Automation permission status
+    @State private var hasAutomationPermission = false
+    
     /// 定时器用于刷新权限状态
     /// Timer to refresh permission status
     let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
@@ -110,6 +114,17 @@ struct PermissionsView: View {
                 }
             }
             
+            // 自动化权限
+            // Automation permission
+            PermissionCard(
+                title: "自动化 (AppleScript)",
+                description: "允许 Selecto 使用 AppleScript 获取文本（Chrome 等浏览器）",
+                isGranted: hasAutomationPermission,
+                icon: "terminal"
+            ) {
+                requestAutomationPermission()
+            }
+            
             Spacer()
             
             if hasAccessibilityPermission {
@@ -147,6 +162,7 @@ struct PermissionsView: View {
         if #available(macOS 10.15, *) {
             hasScreenRecordingPermission = PermissionManager.shared.checkScreenRecordingPermission()
         }
+        hasAutomationPermission = PermissionManager.shared.checkAutomationPermission()
         
         // 如果权限已授予，启动监控
         // Start monitoring if permission is granted
@@ -169,6 +185,12 @@ struct PermissionsView: View {
         if #available(macOS 10.15, *) {
             PermissionManager.shared.openSystemPreferences(for: .screenRecording)
         }
+    }
+    
+    /// 请求自动化权限
+    /// Request automation permission
+    private func requestAutomationPermission() {
+        PermissionManager.shared.openSystemPreferences(for: .automation)
     }
 }
 

@@ -170,10 +170,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 查找并显示主窗口（WindowGroup 创建的窗口）
         // Find and show main window (created by WindowGroup)
         if let mainWindow = NSApp.windows.first(where: { $0.contentViewController is NSHostingController<ContentView> }) {
+            // 设置窗口代理以处理关闭事件
+            // Set window delegate to handle close event
+            mainWindow.delegate = self
             mainWindow.makeKeyAndOrderFront(nil)
         } else if let anyWindow = NSApp.windows.first {
             // 如果没有找到 ContentView 窗口，显示第一个窗口
             // If ContentView window not found, show first window
+            anyWindow.delegate = self
             anyWindow.makeKeyAndOrderFront(nil)
         }
     }
@@ -244,6 +248,26 @@ extension AppDelegate: SelectionMonitorDelegate {
         // 隐藏工具栏
         // Hide toolbar
         toolbarController?.hideToolbar(force: true)
+    }
+}
+
+// MARK: - NSWindowDelegate
+
+extension AppDelegate: NSWindowDelegate {
+    /// 窗口即将关闭时调用
+    /// Called when window is about to close
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        // 隐藏窗口而不是关闭
+        // Hide window instead of closing
+        sender.orderOut(nil)
+        
+        // 切换回 accessory 模式，从 Dock 中隐藏
+        // Switch back to accessory mode to hide from Dock
+        NSApp.setActivationPolicy(.accessory)
+        
+        // 返回 false 以阻止窗口实际关闭
+        // Return false to prevent actual window closure
+        return false
     }
 }
 
