@@ -61,6 +61,14 @@ Selecto 需要以下系统权限才能正常工作：
 
 下载后双击 DMG 文件，将 Selecto.app 拖到 Applications 文件夹即可。
 
+**💡 首次运行提示**
+
+由于应用使用 ad-hoc 签名（非 Apple Developer 证书签名），首次运行时 macOS 可能会提示"无法验证开发者"。这是正常的安全提示，请按以下方式打开：
+
+- 右键点击应用，选择"打开"，在弹出的对话框中点击"打开"按钮
+
+之后应用就可以正常双击打开了。
+
 #### 从源码构建
 
 ```bash
@@ -211,6 +219,14 @@ Visit the [Releases page](https://github.com/echosoar/selecto/releases) to downl
 - **x86_64** - Intel chips only
 
 After downloading, double-click the DMG file and drag Selecto.app to the Applications folder.
+
+**💡 First Launch Note**
+
+Since the app uses ad-hoc signing (not signed with an Apple Developer certificate), macOS may show an "unverified developer" warning on first launch. This is a normal security prompt. To open the app:
+
+- Right-click the app, select "Open", then click "Open" in the dialog
+
+After this, the app can be opened normally by double-clicking.
 
 #### Build from Source
 

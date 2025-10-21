@@ -59,9 +59,9 @@ jobs:
             -configuration Release \
             -arch arm64 \
             -derivedDataPath build-arm64 \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGNING_ALLOWED=YES
       
       - name: Build for x86_64
         run: |
@@ -70,9 +70,9 @@ jobs:
             -configuration Release \
             -arch x86_64 \
             -derivedDataPath build-x86_64 \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGNING_ALLOWED=YES
       
       - name: Create Universal Binary
         run: |
@@ -90,6 +90,12 @@ jobs:
           
           # Verify the universal binary
           lipo -info build-universal/Build/Products/Release/Selecto.app/Contents/MacOS/Selecto
+          
+          # Ad-hoc sign the universal binary
+          codesign --force --deep --sign - build-universal/Build/Products/Release/Selecto.app
+          
+          # Verify the signature
+          codesign --verify --verbose build-universal/Build/Products/Release/Selecto.app
       
       - name: Create DMG
         run: |
@@ -100,6 +106,9 @@ jobs:
           
           # Copy the app to the temp directory
           cp -R build-universal/Build/Products/Release/Selecto.app dmg-temp/
+          
+          # Remove quarantine attributes
+          xattr -cr dmg-temp/Selecto.app
           
           # Create a symbolic link to Applications folder
           ln -s /Applications dmg-temp/Applications
@@ -122,6 +131,9 @@ jobs:
           # Copy the app to the temp directory
           cp -R build-arm64/Build/Products/Release/Selecto.app dmg-arm64-temp/
           
+          # Remove quarantine attributes
+          xattr -cr dmg-arm64-temp/Selecto.app
+          
           # Create a symbolic link to Applications folder
           ln -s /Applications dmg-arm64-temp/Applications
           
@@ -142,6 +154,9 @@ jobs:
           
           # Copy the app to the temp directory
           cp -R build-x86_64/Build/Products/Release/Selecto.app dmg-x86-temp/
+          
+          # Remove quarantine attributes
+          xattr -cr dmg-x86-temp/Selecto.app
           
           # Create a symbolic link to Applications folder
           ln -s /Applications dmg-x86-temp/Applications
