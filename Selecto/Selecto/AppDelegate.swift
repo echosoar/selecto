@@ -40,7 +40,7 @@ struct SelectoApp: App {
 
 /// 应用代理类
 /// App delegate class
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     // MARK: - Properties
     
@@ -170,11 +170,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 查找并显示主窗口（WindowGroup 创建的窗口）
         // Find and show main window (created by WindowGroup)
         if let mainWindow = NSApp.windows.first(where: { $0.contentViewController is NSHostingController<ContentView> }) {
+            // 设置窗口代理以监听关闭事件
+            // Set window delegate to listen for close events
+            mainWindow.delegate = self
             mainWindow.makeKeyAndOrderFront(nil)
         } else if let anyWindow = NSApp.windows.first {
             // 如果没有找到 ContentView 窗口，显示第一个窗口
             // If ContentView window not found, show first window
+            anyWindow.delegate = self
             anyWindow.makeKeyAndOrderFront(nil)
+        }
+    }
+    
+    /// 窗口即将关闭时的回调
+    /// Called when window is about to close
+    func windowWillClose(_ notification: Notification) {
+        // 检查是否是主窗口关闭
+        // Check if it's the main window closing
+        if let window = notification.object as? NSWindow,
+           window.contentViewController is NSHostingController<ContentView> {
+            // 恢复为后台模式，隐藏应用图标和窗口
+            // Revert to accessory mode, hiding the app icon and window
+            NSApp.setActivationPolicy(.accessory)
         }
     }
     

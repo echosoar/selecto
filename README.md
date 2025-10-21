@@ -61,6 +61,19 @@ Selecto 需要以下系统权限才能正常工作：
 
 下载后双击 DMG 文件，将 Selecto.app 拖到 Applications 文件夹即可。
 
+**⚠️ 关于"已损坏"提示的说明**
+
+由于应用未经过 Apple 公证，首次打开时 macOS 可能会提示"应用已损坏"。这是正常的安全机制。请按以下步骤解决：
+
+1. **方法一（推荐）**：在终端执行以下命令移除隔离属性
+   ```bash
+   xattr -cr /Applications/Selecto.app
+   ```
+
+2. **方法二**：右键点击应用，选择"打开"，在弹出的对话框中点击"打开"按钮
+
+3. **方法三**：在"系统偏好设置" > "安全性与隐私" > "通用"中，点击"仍要打开"
+
 #### 从源码构建
 
 ```bash
@@ -211,6 +224,19 @@ Visit the [Releases page](https://github.com/echosoar/selecto/releases) to downl
 - **x86_64** - Intel chips only
 
 After downloading, double-click the DMG file and drag Selecto.app to the Applications folder.
+
+**⚠️ About the "Damaged" Warning**
+
+Since the app is not notarized by Apple, macOS may show a "damaged app" warning on first launch. This is a normal security mechanism. To resolve this:
+
+1. **Method 1 (Recommended)**: Run this command in Terminal to remove the quarantine attribute
+   ```bash
+   xattr -cr /Applications/Selecto.app
+   ```
+
+2. **Method 2**: Right-click the app, select "Open", then click "Open" in the dialog
+
+3. **Method 3**: Go to "System Preferences" > "Security & Privacy" > "General" and click "Open Anyway"
 
 #### Build from Source
 
