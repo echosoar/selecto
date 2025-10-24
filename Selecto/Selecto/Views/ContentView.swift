@@ -452,6 +452,10 @@ struct PreferencesView: View {
     /// 应用偏好设置
     /// Application preferences storage
     @ObservedObject private var preferences = AppPreferences.shared
+    
+    /// 更新管理器
+    /// Update manager
+    @ObservedObject private var updateManager = UpdateManager.shared
 
     /// 新排除应用的 Bundle ID
     /// Bundle ID for new excluded app
@@ -525,6 +529,120 @@ struct PreferencesView: View {
                             }
                         }
                     }
+                }
+                .padding()
+            }
+            
+            // 配置管理
+            // Configuration management
+            GroupBox(label: Label("配置", systemImage: "folder")) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("打开配置文件目录以查看或备份您的设置")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    Button(action: {
+                        updateManager.openConfigDirectory()
+                    }) {
+                        Label("打开配置文件目录", systemImage: "folder.badge.gear")
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding()
+            }
+            
+            // 应用更新
+            // App updates
+            GroupBox(label: Label("更新", systemImage: "arrow.down.circle")) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("当前版本:")
+                            .font(.subheadline)
+                        Text(updateManager.currentVersion)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Spacer()
+                    }
+                    
+                    if let latestVersion = updateManager.latestVersion {
+                        HStack {
+                            Text("最新版本:")
+                                .font(.subheadline)
+                            Text(latestVersion.version)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(updateManager.hasUpdate ? .green : .secondary)
+                            Spacer()
+                        }
+                        
+                        if updateManager.hasUpdate {
+                            Text("发现新版本！")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                                .fontWeight(.medium)
+                        } else {
+                            Text("您已是最新版本")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        if let releaseNotes = latestVersion.releaseNotes, !releaseNotes.isEmpty {
+                            Divider()
+                                .padding(.vertical, 4)
+                            
+                            Text("更新说明:")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                            
+                            ScrollView {
+                                Text(releaseNotes)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .textSelection(.enabled)
+                            }
+                            .frame(maxHeight: 100)
+                        }
+                    }
+                    
+                    if let errorMessage = updateManager.errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                    
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            updateManager.checkForUpdates()
+                        }) {
+                            if updateManager.isCheckingForUpdates {
+                                HStack {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                        .frame(width: 16, height: 16)
+                                    Text("检查中...")
+                                }
+                            } else {
+                                Label("检查更新", systemImage: "arrow.clockwise")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(updateManager.isCheckingForUpdates)
+                        
+                        if updateManager.hasUpdate {
+                            Button(action: {
+                                updateManager.openDownloadPage()
+                            }) {
+                                Label("立即更新", systemImage: "arrow.down.circle.fill")
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    
+                    Text("注意：更新时会保留您的授权和配置缓存")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .italic()
                 }
                 .padding()
             }
