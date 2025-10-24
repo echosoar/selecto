@@ -466,12 +466,21 @@ struct PreferencesView: View {
     @State private var showingAddExcludedApp = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: 0) {
+            // 固定标题
+            // Fixed header
             Text("偏好设置")
                 .font(.largeTitle)
                 .bold()
-
-            GroupBox(label: Label("文本选择", systemImage: "text.cursor")) {
+                .padding(.horizontal, 32)
+                .padding(.top, 32)
+                .padding(.bottom, 24)
+            
+            // 可滚动内容
+            // Scrollable content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    GroupBox(label: Label("文本选择", systemImage: "text.cursor")) {
                 VStack(alignment: .leading, spacing: 12) {
                     Toggle("开启强制选词", isOn: $preferences.forceSelectionEnabled)
                         .toggleStyle(.switch)
@@ -627,15 +636,49 @@ struct PreferencesView: View {
                             }
                         }
                         .buttonStyle(.bordered)
-                        .disabled(updateManager.isCheckingForUpdates)
+                        .disabled(updateManager.isCheckingForUpdates || updateManager.isDownloading)
                         
                         if updateManager.hasUpdate {
                             Button(action: {
-                                updateManager.openDownloadPage()
+                                updateManager.downloadAndInstallUpdate()
                             }) {
-                                Label("立即更新", systemImage: "arrow.down.circle.fill")
+                                if updateManager.isDownloading {
+                                    HStack {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                            .frame(width: 16, height: 16)
+                                        Text("下载中...")
+                                    }
+                                } else {
+                                    Label("立即更新", systemImage: "arrow.down.circle.fill")
+                                }
                             }
                             .buttonStyle(.borderedProminent)
+                            .disabled(updateManager.isDownloading)
+                            
+                            Button(action: {
+                                updateManager.openDownloadPage()
+                            }) {
+                                Label("打开下载页面", systemImage: "safari")
+                            }
+                            .buttonStyle(.bordered)
+                            .help("在浏览器中打开 GitHub 发布页面")
+                        }
+                    }
+                    
+                    // 显示下载进度
+                    // Show download progress
+                    if updateManager.isDownloading {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("下载进度:")
+                                    .font(.caption)
+                                Spacer()
+                                Text(String(format: "%.0f%%", updateManager.downloadProgress * 100))
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                            ProgressView(value: updateManager.downloadProgress)
                         }
                     }
                     
@@ -646,10 +689,11 @@ struct PreferencesView: View {
                 }
                 .padding()
             }
-
-            Spacer()
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 32)
+            }
         }
-        .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .sheet(isPresented: $showingAddExcludedApp) {
             VStack(spacing: 20) {
