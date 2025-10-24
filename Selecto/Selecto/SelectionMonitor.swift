@@ -409,13 +409,20 @@ class SelectionMonitor {
 
         let scriptSource = """
         set previousClipboard to (the clipboard as record)
+        set previousText to ""
+        try
+            set previousText to (the clipboard as text)
+        end try
         tell application "System Events"
             keystroke "c" using {command down}
         end tell
         delay 0.05
-        set selectedText to the (the clipboard as text)
+        set selectedText to ""
+        try
+            set selectedText to (the clipboard as text)
+        end try
         set the clipboard to previousClipboard
-        return selectedText
+        return {previousText, selectedText}
         """
 
         guard let script = NSAppleScript(source: scriptSource) else {
@@ -430,16 +437,32 @@ class SelectionMonitor {
             return nil
         }
 
-        guard let textValue = descriptor.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !textValue.isEmpty,
-              textValue.lowercased() != "undefined",
-              textValue.lowercased() != "null" else {
+        // 获取返回的列表：{previousText, selectedText}
+        // Get the returned list: {previousText, selectedText}
+        guard descriptor.numberOfItems == 2,
+              let previousTextDescriptor = descriptor.atIndex(1),
+              let selectedTextDescriptor = descriptor.atIndex(2) else {
+            return nil
+        }
+
+        let previousText = previousTextDescriptor.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let selectedText = selectedTextDescriptor.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        // 如果剪贴板内容在复制前后相同，说明没有选中新文本
+        // If clipboard content is the same before and after copy, no new text was selected
+        if previousText == selectedText {
+            return nil
+        }
+
+        guard !selectedText.isEmpty,
+              selectedText.lowercased() != "undefined",
+              selectedText.lowercased() != "null" else {
             return nil
         }
 
         let mouseLocation = NSEvent.mouseLocation
         let fallbackBounds = CGRect(x: mouseLocation.x - 60, y: mouseLocation.y - 20, width: 160, height: 32)
-        return (textValue, fallbackBounds, .appKit)
+        return (selectedText, fallbackBounds, .appKit)
     }
     
     /// 获取选区的精确边界
