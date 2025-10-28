@@ -466,21 +466,13 @@ struct PreferencesView: View {
     @State private var showingAddExcludedApp = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // 固定标题
-            // Fixed header
-            Text("偏好设置")
-                .font(.largeTitle)
-                .bold()
-                .padding(.horizontal, 32)
-                .padding(.top, 32)
-                .padding(.bottom, 24)
-            
-            // 可滚动内容
-            // Scrollable content
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    GroupBox(label: Label("文本选择", systemImage: "text.cursor")) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Text("偏好设置")
+                    .font(.largeTitle)
+                    .bold()
+
+                GroupBox(label: Label("文本选择", systemImage: "text.cursor")) {
                 VStack(alignment: .leading, spacing: 12) {
                     Toggle("开启强制选词", isOn: $preferences.forceSelectionEnabled)
                         .toggleStyle(.switch)
@@ -689,10 +681,8 @@ struct PreferencesView: View {
                 }
                 .padding()
             }
-                }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 32)
             }
+            .padding(32)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .sheet(isPresented: $showingAddExcludedApp) {
