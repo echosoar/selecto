@@ -452,6 +452,10 @@ struct PreferencesView: View {
     /// 应用偏好设置
     /// Application preferences storage
     @ObservedObject private var preferences = AppPreferences.shared
+    
+    /// 更新管理器
+    /// Update manager
+    @ObservedObject private var updateManager = UpdateManager.shared
 
     /// 新排除应用的 Bundle ID
     /// Bundle ID for new excluded app
@@ -462,12 +466,13 @@ struct PreferencesView: View {
     @State private var showingAddExcludedApp = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("偏好设置")
-                .font(.largeTitle)
-                .bold()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Text("偏好设置")
+                    .font(.largeTitle)
+                    .bold()
 
-            GroupBox(label: Label("文本选择", systemImage: "text.cursor")) {
+                GroupBox(label: Label("文本选择", systemImage: "text.cursor")) {
                 VStack(alignment: .leading, spacing: 12) {
                     Toggle("开启强制选词", isOn: $preferences.forceSelectionEnabled)
                         .toggleStyle(.switch)
@@ -528,10 +533,157 @@ struct PreferencesView: View {
                 }
                 .padding()
             }
-
-            Spacer()
+            
+            // 配置管理
+            // Configuration management
+            GroupBox(label: Label("配置", systemImage: "folder")) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("打开配置文件目录以查看或备份您的设置")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    Button(action: {
+                        updateManager.openConfigDirectory()
+                    }) {
+                        Label("打开配置文件目录", systemImage: "folder.badge.gear")
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding()
+            }
+            
+            // 应用更新
+            // App updates
+            GroupBox(label: Label("更新", systemImage: "arrow.down.circle")) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("当前版本:")
+                            .font(.subheadline)
+                        Text(updateManager.currentVersion)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Spacer()
+                    }
+                    
+                    if let latestVersion = updateManager.latestVersion {
+                        HStack {
+                            Text("最新版本:")
+                                .font(.subheadline)
+                            Text(latestVersion.version)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(updateManager.hasUpdate ? .green : .secondary)
+                            Spacer()
+                        }
+                        
+                        if updateManager.hasUpdate {
+                            Text("发现新版本！")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                                .fontWeight(.medium)
+                        } else {
+                            Text("您已是最新版本")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        if let releaseNotes = latestVersion.releaseNotes, !releaseNotes.isEmpty {
+                            Divider()
+                                .padding(.vertical, 4)
+                            
+                            Text("更新说明:")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                            
+                            ScrollView {
+                                Text(releaseNotes)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .textSelection(.enabled)
+                            }
+                            .frame(maxHeight: 100)
+                        }
+                    }
+                    
+                    if let errorMessage = updateManager.errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                    
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            updateManager.checkForUpdates()
+                        }) {
+                            if updateManager.isCheckingForUpdates {
+                                HStack {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                        .frame(width: 16, height: 16)
+                                    Text("检查中...")
+                                }
+                            } else {
+                                Label("检查更新", systemImage: "arrow.clockwise")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(updateManager.isCheckingForUpdates || updateManager.isDownloading)
+                        
+                        if updateManager.hasUpdate {
+                            Button(action: {
+                                updateManager.downloadAndInstallUpdate()
+                            }) {
+                                if updateManager.isDownloading {
+                                    HStack {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                            .frame(width: 16, height: 16)
+                                        Text("下载中...")
+                                    }
+                                } else {
+                                    Label("立即更新", systemImage: "arrow.down.circle.fill")
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(updateManager.isDownloading)
+                            
+                            Button(action: {
+                                updateManager.openDownloadPage()
+                            }) {
+                                Label("打开下载页面", systemImage: "safari")
+                            }
+                            .buttonStyle(.bordered)
+                            .help("在浏览器中打开 GitHub 发布页面")
+                        }
+                    }
+                    
+                    // 显示下载进度
+                    // Show download progress
+                    if updateManager.isDownloading {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("下载进度:")
+                                    .font(.caption)
+                                Spacer()
+                                Text(String(format: "%.0f%%", updateManager.downloadProgress * 100))
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                            ProgressView(value: updateManager.downloadProgress)
+                        }
+                    }
+                    
+                    Text("注意：更新时会保留您的授权和配置缓存")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .italic()
+                }
+                .padding()
+            }
+            }
+            .padding(32)
         }
-        .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .sheet(isPresented: $showingAddExcludedApp) {
             VStack(spacing: 20) {
