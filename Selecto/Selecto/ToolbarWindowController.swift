@@ -130,7 +130,7 @@ class ToolbarWindowController: NSWindowController {
     /// 隐藏工具栏
     /// Hide toolbar
     func hideToolbar(force: Bool = false) {
-        if lastClickWasInsideToolbar {
+        if !force && lastClickWasInsideToolbar {
             return
         }
         lastClickWasInsideToolbar = false
@@ -306,7 +306,9 @@ extension ToolbarWindowController: ToolbarViewDelegate {
     private func handleExecutionResult(_ result: ActionExecutionResult) {
         switch result {
         case .urlOpened:
-            break
+            // 打开链接后自动隐藏工具栏
+            // Auto-hide toolbar after opening link
+            hideToolbar(force: true)
         case .scriptOutput(let lines):
             toolbarView?.showScriptOutput(lines)
             resizeWindowToFitContent()
