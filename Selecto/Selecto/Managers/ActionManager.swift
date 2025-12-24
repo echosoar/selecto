@@ -104,23 +104,41 @@ class ActionManager {
     /// 加载动作配置
     /// Load action configuration
     private func loadActions() {
+        var loadedActions: [ActionItem] = []
+        
         // 尝试从文件加载
         // Try to load from file
         if FileManager.default.fileExists(atPath: configFileURL.path) {
             do {
                 let data = try Data(contentsOf: configFileURL)
                 let decoder = JSONDecoder()
-                actions = try decoder.decode([ActionItem].self, from: data)
-                return
+                loadedActions = try decoder.decode([ActionItem].self, from: data)
             } catch {
                 print("加载动作配置失败 (Failed to load action configuration): \(error)")
             }
         }
         
-        // 如果加载失败，使用默认配置
-        // If loading fails, use default configuration
-        actions = ActionItem.defaultActions()
-        saveActions()
+        // 获取默认动作
+        // Get default actions
+        let defaultActions = ActionItem.defaultActions()
+        
+        // 合并动作：保留加载的动作，添加不存在的默认动作
+        // Merge actions: keep loaded actions, add non-existent default actions
+        var finalActions = loadedActions
+        
+        for defaultAction in defaultActions {
+            if !finalActions.contains(where: { $0.name == defaultAction.name }) {
+                finalActions.append(defaultAction)
+            }
+        }
+        
+        actions = finalActions
+        
+        // 如果有合并发生（即 finalActions 数量大于 loadedActions），保存
+        // If merge happened (i.e. finalActions count > loadedActions), save
+        if finalActions.count > loadedActions.count {
+            saveActions()
+        }
     }
     
     /// 保存动作配置

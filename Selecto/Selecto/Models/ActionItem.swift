@@ -148,6 +148,18 @@ struct ActionItem: Codable, Identifiable {
     /// Create default action list
     static func defaultActions() -> [ActionItem] {
         return [
+            // 打开链接
+            // Open URL
+            ActionItem(
+                name: "open_url",
+                displayName: "打开",
+                type: .openURL,
+                matchPattern: "^https?://.*",
+                parameters: ["url": "{text}"],
+                iconName: "safari",
+                sortOrder: -100
+            ),
+
             ActionItem(
                 name: "search_google",
                 displayName: "搜索",
@@ -308,7 +320,54 @@ else
 fi
 """],
                 sortOrder: 5
-            )
+            ),
+
+            // 6. 问 ai
+            // 时间转换
+            // Time Conversion
+            ActionItem(
+                name: "ask_ai",
+                displayName: "问 AI",
+                type: .executeScript,
+                matchPattern: "",
+                parameters: ["script": """
+#!/bin/bash
+URL="https://models.github.ai/inference/chat/completions"
+
+AUTH="请输入你的API密钥"
+
+MODEL="gpt-4o"
+
+DATA=$(jq -n \
+  --arg model "$MODEL" \
+  --arg content "$SELECTO_TEXT" \
+  '{
+    "model": $model,
+    "messages": [
+        {
+            "role": "system",
+            "content": "请帮我使用普通初中生可以听懂的话解释它是什么"
+        },
+      {
+        "role": "user",
+        "content": $content
+      }
+    ],
+    "temperature": 0.7
+  }')
+
+
+RESPONSE=$(curl -s -S -X POST \
+  --url $URL \
+  --header "authorization: Bearer $AUTH" \
+  --header 'content-type: application/json' \
+  --data "$DATA" 2>/dev/null)
+message_content=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
+
+echo "$message_content"
+"""],
+                sortOrder: 6
+            ),
         ]
     }
 }
