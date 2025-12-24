@@ -234,21 +234,32 @@ class ToolbarView: NSView {
     private func createResultRow(text: String, isError: Bool) -> NSView {
         let container = NSStackView()
         container.orientation = .horizontal
-        container.alignment = .centerY
+        container.alignment = .top
         container.spacing = 8
+        
+        // 限制最大宽度
+        // Limit max width
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.widthAnchor.constraint(lessThanOrEqualToConstant: 400).isActive = true
         
         let label = NSTextField(labelWithString: text)
         label.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         label.textColor = isError ? NSColor.systemRed : NSColor.labelColor
-        label.maximumNumberOfLines = 1
-        label.lineBreakMode = .byTruncatingTail
-        label.allowsDefaultTighteningForTruncation = true
-        container.addArrangedSubview(label)
         
-        let spacer = NSView()
-        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        container.addArrangedSubview(spacer)
+        // 允许折行
+        // Allow wrapping
+        label.maximumNumberOfLines = 0
+        label.lineBreakMode = .byCharWrapping
+        label.usesSingleLineMode = false
+        label.cell?.wraps = true
+        label.cell?.isScrollable = false
+        
+        // 设置首选最大宽度，预留按钮空间
+        // Set preferred max width, reserving space for buttons
+        label.preferredMaxLayoutWidth = 340
+        
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        container.addArrangedSubview(label)
         
         let copyButton: NSButton
         if let symbol = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "复制") {
