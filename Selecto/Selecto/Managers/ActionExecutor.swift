@@ -345,7 +345,9 @@ class ActionExecutor {
         if let jsonObject = try? JSONSerialization.jsonObject(with: data),
            let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted]),
            let prettyString = String(data: prettyData, encoding: .utf8) {
-            return prettyString.components(separatedBy: .newlines).filter { !$0.isEmpty }
+            // 保留所有行以维持 JSON 格式
+            // Keep all lines to maintain JSON formatting
+            return prettyString.components(separatedBy: .newlines)
         }
         
         // 返回原始响应

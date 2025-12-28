@@ -1134,12 +1134,33 @@ struct ActionEditorView: View {
         _type = State(initialValue: action?.type ?? .openURL)
         _isEnabled = State(initialValue: action?.isEnabled ?? true)
         _matchPattern = State(initialValue: action?.matchPattern ?? "")
-        _urlParameter = State(initialValue: action?.parameters["url"] ?? "")
-        _scriptContent = State(initialValue: action?.parameters["script"] ?? "")
-        _httpURL = State(initialValue: action?.parameters["url"] ?? "")
-        _httpMethod = State(initialValue: action?.parameters["method"] ?? "GET")
-        _httpHeaders = State(initialValue: action?.parameters["headers"] ?? "")
-        _httpBody = State(initialValue: action?.parameters["body"] ?? "")
+        
+        // 根据动作类型初始化相应的参数
+        // Initialize parameters based on action type
+        let actionType = action?.type ?? .openURL
+        switch actionType {
+        case .openURL:
+            _urlParameter = State(initialValue: action?.parameters["url"] ?? "")
+            _scriptContent = State(initialValue: "")
+            _httpURL = State(initialValue: "")
+            _httpMethod = State(initialValue: "GET")
+            _httpHeaders = State(initialValue: "")
+            _httpBody = State(initialValue: "")
+        case .executeScript:
+            _urlParameter = State(initialValue: "")
+            _scriptContent = State(initialValue: action?.parameters["script"] ?? "")
+            _httpURL = State(initialValue: "")
+            _httpMethod = State(initialValue: "GET")
+            _httpHeaders = State(initialValue: "")
+            _httpBody = State(initialValue: "")
+        case .http:
+            _urlParameter = State(initialValue: "")
+            _scriptContent = State(initialValue: "")
+            _httpURL = State(initialValue: action?.parameters["url"] ?? "")
+            _httpMethod = State(initialValue: action?.parameters["method"] ?? "GET")
+            _httpHeaders = State(initialValue: action?.parameters["headers"] ?? "")
+            _httpBody = State(initialValue: action?.parameters["body"] ?? "")
+        }
     }
     
     var body: some View {
