@@ -88,7 +88,7 @@ class ActionExecutor {
         if let script = parameters["script"], !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             do {
                 let scriptURL = try prepareTemporaryScript(from: script, with: text)
-                runScript(at: scriptURL, inputText: text, deleteAfterRun: true, completion: completion)
+                runScript(at: scriptURL, inputText: text, deleteAfterRun: true, jsonPath: parameters["jsonPath"], completion: completion)
             } catch {
                 DispatchQueue.main.async {
                     completion(.failure("脚本保存失败: \(error.localizedDescription)"))
@@ -99,7 +99,7 @@ class ActionExecutor {
         
         if let path = parameters["path"], !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let fileURL = URL(fileURLWithPath: path)
-            runScript(at: fileURL, inputText: text, deleteAfterRun: false, completion: completion)
+            runScript(at: fileURL, inputText: text, deleteAfterRun: false, jsonPath: parameters["jsonPath"], completion: completion)
             return
         }
         
@@ -121,7 +121,7 @@ class ActionExecutor {
         return fileURL
     }
     
-    private func runScript(at url: URL, inputText: String, deleteAfterRun: Bool, completion: @escaping (ActionExecutionResult) -> Void) {
+    private func runScript(at url: URL, inputText: String, deleteAfterRun: Bool, jsonPath: String?, completion: @escaping (ActionExecutionResult) -> Void) {
         let process = Process()
         if deleteAfterRun {
             process.executableURL = URL(fileURLWithPath: "/bin/zsh")
@@ -158,11 +158,18 @@ class ActionExecutor {
             let exitCode = proc.terminationStatus
             DispatchQueue.main.async {
                 if exitCode == 0 {
-                    let lines = outputString
-                        .components(separatedBy: CharacterSet.newlines)
-                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                        .filter { !$0.isEmpty }
-                    completion(.scriptOutput(lines))
+                    // 尝试提取 JSON 路径
+                    // Try to extract JSON path
+                    if let path = jsonPath, !path.isEmpty, !stdoutData.isEmpty {
+                        let processedLines = self.processResponseData(stdoutData, jsonPath: path)
+                        completion(.scriptOutput(processedLines))
+                    } else {
+                        let lines = outputString
+                            .components(separatedBy: CharacterSet.newlines)
+                            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                            .filter { !$0.isEmpty }
+                        completion(.scriptOutput(lines))
+                    }
                 } else {
                     let message = errorString.trimmingCharacters(in: .whitespacesAndNewlines)
                     if message.isEmpty {
@@ -286,7 +293,8 @@ class ActionExecutor {
             responseLines.append("状态码: \(httpResponse.statusCode)")
             
             if let data = data, !data.isEmpty {
-                let processedLines = self.processResponseData(data)
+                let jsonPath = parameters["jsonPath"]
+                let processedLines = self.processResponseData(data, jsonPath: jsonPath)
                 responseLines.append(contentsOf: processedLines)
             }
             
@@ -335,23 +343,96 @@ class ActionExecutor {
     
     /// 处理 HTTP 响应数据
     /// Process HTTP response data
-    private func processResponseData(_ data: Data) -> [String] {
+    private func processResponseData(_ data: Data, jsonPath: String? = nil) -> [String] {
         guard let responseString = String(data: data, encoding: .utf8) else {
             return []
         }
         
         // 尝试格式化 JSON
         // Try to format JSON
-        if let jsonObject = try? JSONSerialization.jsonObject(with: data),
-           let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted]),
-           let prettyString = String(data: prettyData, encoding: .utf8) {
-            // 保留所有行以维持 JSON 格式
-            // Keep all lines to maintain JSON formatting
-            return prettyString.components(separatedBy: .newlines)
+        if let jsonObject = try? JSONSerialization.jsonObject(with: data) {
+            // 如果提供了 JSON 路径，提取指定值
+            // If JSON path is provided, extract the specified value
+            if let path = jsonPath, !path.isEmpty {
+                if let extractedValue = extractValueFromJSON(jsonObject, path: path) {
+                    return formatExtractedValue(extractedValue)
+                } else {
+                    return ["路径 '\(path)' 未找到或无效"]
+                }
+            }
+            
+            // 否则返回格式化的完整 JSON
+            // Otherwise return formatted full JSON
+            if let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted]),
+               let prettyString = String(data: prettyData, encoding: .utf8) {
+                // 保留所有行以维持 JSON 格式
+                // Keep all lines to maintain JSON formatting
+                return prettyString.components(separatedBy: .newlines)
+            }
         }
         
         // 返回原始响应，保留所有行
         // Return raw response, preserving all lines
         return responseString.components(separatedBy: .newlines)
+    }
+    
+    /// 从 JSON 对象中提取指定路径的值
+    /// Extract value from JSON object using dot notation path
+    /// - Parameters:
+    ///   - json: JSON 对象 / JSON object
+    ///   - path: 路径（如 "a.b.c" 或 "a.0.c"）/ Path (e.g., "a.b.c" or "a.0.c")
+    /// - Returns: 提取的值 / Extracted value
+    private func extractValueFromJSON(_ json: Any, path: String) -> Any? {
+        let components = path.components(separatedBy: ".")
+        var current: Any = json
+        
+        for component in components {
+            // 检查是否为数组索引
+            // Check if it's an array index
+            if let index = Int(component) {
+                guard let array = current as? [Any], index >= 0, index < array.count else {
+                    return nil
+                }
+                current = array[index]
+            } else {
+                // 字典键
+                // Dictionary key
+                guard let dict = current as? [String: Any], let value = dict[component] else {
+                    return nil
+                }
+                current = value
+            }
+        }
+        
+        return current
+    }
+    
+    /// 格式化提取的值为字符串数组
+    /// Format extracted value to string array
+    private func formatExtractedValue(_ value: Any) -> [String] {
+        if let string = value as? String {
+            return [string]
+        } else if let number = value as? NSNumber {
+            return [number.stringValue]
+        } else if let bool = value as? Bool {
+            return [bool ? "true" : "false"]
+        } else if let array = value as? [Any] {
+            // 格式化数组
+            // Format array
+            if let jsonData = try? JSONSerialization.data(withJSONObject: array, options: [.prettyPrinted]),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                return jsonString.components(separatedBy: .newlines)
+            }
+            return ["[数组, \(array.count) 项]"]
+        } else if let dict = value as? [String: Any] {
+            // 格式化字典
+            // Format dictionary
+            if let jsonData = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted]),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                return jsonString.components(separatedBy: .newlines)
+            }
+            return ["[对象]"]
+        }
+        return [String(describing: value)]
     }
 }

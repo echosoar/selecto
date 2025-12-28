@@ -998,6 +998,17 @@ struct ActionDetailView: View {
                             .padding(.horizontal)
                             .padding(.vertical, 8)
                         }
+                        
+                        if let jsonPath = action.parameters["jsonPath"], !jsonPath.isEmpty {
+                            GroupBox(label: Text("JSON 路径提取")) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(jsonPath)
+                                        .font(.system(.body, design: .monospaced))
+                                        .textSelection(.enabled)
+                                }
+                                .padding()
+                            }
+                        }
                     } else if action.type == .http {
                         if let url = action.parameters["url"], !url.isEmpty {
                             GroupBox(label: Text("URL")) {
@@ -1046,6 +1057,17 @@ struct ActionDetailView: View {
                                 .frame(minHeight: 80)
                                 .padding(.horizontal)
                                 .padding(.vertical, 8)
+                            }
+                        }
+                        
+                        if let jsonPath = action.parameters["jsonPath"], !jsonPath.isEmpty {
+                            GroupBox(label: Text("JSON 路径提取")) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(jsonPath)
+                                        .font(.system(.body, design: .monospaced))
+                                        .textSelection(.enabled)
+                                }
+                                .padding()
                             }
                         }
                     }
@@ -1124,6 +1146,7 @@ struct ActionEditorView: View {
     @State private var httpMethod: String
     @State private var httpHeaders: String
     @State private var httpBody: String
+    @State private var jsonPath: String
     
     init(action: ActionItem?, onSave: @escaping (ActionItem) -> Void) {
         self.action = action
@@ -1146,6 +1169,7 @@ struct ActionEditorView: View {
             _httpMethod = State(initialValue: "GET")
             _httpHeaders = State(initialValue: "")
             _httpBody = State(initialValue: "")
+            _jsonPath = State(initialValue: "")
         case .executeScript:
             _urlParameter = State(initialValue: "")
             _scriptContent = State(initialValue: action?.parameters["script"] ?? "")
@@ -1153,6 +1177,7 @@ struct ActionEditorView: View {
             _httpMethod = State(initialValue: "GET")
             _httpHeaders = State(initialValue: "")
             _httpBody = State(initialValue: "")
+            _jsonPath = State(initialValue: action?.parameters["jsonPath"] ?? "")
         case .http:
             _urlParameter = State(initialValue: "")
             _scriptContent = State(initialValue: "")
@@ -1160,6 +1185,7 @@ struct ActionEditorView: View {
             _httpMethod = State(initialValue: action?.parameters["method"] ?? "GET")
             _httpHeaders = State(initialValue: action?.parameters["headers"] ?? "")
             _httpBody = State(initialValue: action?.parameters["body"] ?? "")
+            _jsonPath = State(initialValue: action?.parameters["jsonPath"] ?? "")
         }
     }
     
@@ -1205,6 +1231,18 @@ struct ActionEditorView: View {
                             Text("脚本将在 /bin/zsh 下执行，可使用 {text} 或 SELECTO_TEXT 环境变量获取选中文本")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                            
+                            Divider()
+                                .padding(.vertical, 4)
+                            
+                            Text("JSON 路径提取（可选）")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            TextField("例如: data.items.0.name", text: $jsonPath)
+                                .font(.system(.body, design: .monospaced))
+                            Text("从 JSON 结果中提取指定路径的值，支持数组索引（如 a.0.c）")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     } else if type == .http {
                         VStack(alignment: .leading, spacing: 8) {
@@ -1248,6 +1286,18 @@ struct ActionEditorView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
+                            
+                            Divider()
+                                .padding(.vertical, 4)
+                            
+                            Text("JSON 路径提取（可选）")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            TextField("例如: data.items.0.name", text: $jsonPath)
+                                .font(.system(.body, design: .monospaced))
+                            Text("从 JSON 结果中提取指定路径的值，支持数组索引（如 a.0.c）")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
@@ -1282,6 +1332,9 @@ struct ActionEditorView: View {
             if !scriptContent.isEmpty {
                 parameters["script"] = scriptContent
             }
+            if !jsonPath.isEmpty {
+                parameters["jsonPath"] = jsonPath
+            }
         case .http:
             if !httpURL.isEmpty {
                 parameters["url"] = httpURL
@@ -1292,6 +1345,9 @@ struct ActionEditorView: View {
             }
             if !httpBody.isEmpty {
                 parameters["body"] = httpBody
+            }
+            if !jsonPath.isEmpty {
+                parameters["jsonPath"] = jsonPath
             }
         }
         
