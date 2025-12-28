@@ -350,8 +350,8 @@ class ActionExecutor {
             return prettyString.components(separatedBy: .newlines)
         }
         
-        // 返回原始响应
-        // Return raw response
-        return responseString.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        // 返回原始响应，保留所有行
+        // Return raw response, preserving all lines
+        return responseString.components(separatedBy: .newlines)
     }
 }
