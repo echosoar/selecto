@@ -19,6 +19,10 @@ enum ActionType: String, CaseIterable, Codable {
     /// Execute script
     case executeScript = "script"
     
+    /// 发起 HTTP 请求
+    /// HTTP request
+    case http = "http"
+    
     /// 显示名称
     /// Display name
     var displayName: String {
@@ -27,6 +31,8 @@ enum ActionType: String, CaseIterable, Codable {
             return "打开链接"
         case .executeScript:
             return "运行脚本"
+        case .http:
+            return "HTTP 请求"
         }
     }
 }
