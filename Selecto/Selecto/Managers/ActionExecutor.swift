@@ -206,9 +206,10 @@ class ActionExecutor {
             return
         }
         
-        // 替换 URL 中的 {text} 占位符
-        // Replace {text} placeholder in URL
-        let urlString = urlTemplate.replacingOccurrences(of: "{text}", with: text)
+        // 替换 URL 中的 {text} 占位符 (URL 编码)
+        // Replace {text} placeholder in URL (URL encode)
+        let encodedText = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? text
+        let urlString = urlTemplate.replacingOccurrences(of: "{text}", with: encodedText)
         
         guard let url = URL(string: urlString) else {
             DispatchQueue.main.async {
@@ -227,11 +228,15 @@ class ActionExecutor {
         request.httpMethod = method
         request.timeoutInterval = 30
         
+        // JSON 转义文本
+        // JSON escape text for headers and body
+        let jsonEscapedText = jsonEscape(text)
+        
         // 添加请求头
         // Add headers
         if let headersJSON = parameters["headers"], !headersJSON.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             do {
-                let headersString = headersJSON.replacingOccurrences(of: "{text}", with: text)
+                let headersString = headersJSON.replacingOccurrences(of: "{text}", with: jsonEscapedText)
                 if let headersData = headersString.data(using: .utf8),
                    let headers = try JSONSerialization.jsonObject(with: headersData) as? [String: String] {
                     for (key, value) in headers {
@@ -250,7 +255,7 @@ class ActionExecutor {
         // Add request body (POST/PUT)
         if method == "POST" || method == "PUT" {
             if let bodyJSON = parameters["body"], !bodyJSON.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                let bodyString = bodyJSON.replacingOccurrences(of: "{text}", with: text)
+                let bodyString = bodyJSON.replacingOccurrences(of: "{text}", with: jsonEscapedText)
                 if let bodyData = bodyString.data(using: .utf8) {
                     request.httpBody = bodyData
                     if request.value(forHTTPHeaderField: "Content-Type") == nil {
@@ -302,5 +307,35 @@ class ActionExecutor {
         }
         
         task.resume()
+    }
+    
+    /// JSON 转义文本
+    /// Escape text for JSON
+    private func jsonEscape(_ text: String) -> String {
+        // 使用 JSONSerialization 来正确转义字符串
+        // Use JSONSerialization to properly escape the string
+        if let jsonData = try? JSONSerialization.data(withJSONObject: [text]),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            // 移除数组的方括号，只保留转义后的字符串（包括引号）
+            // Remove array brackets, keep only the escaped string (with quotes)
+            let trimmed = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+                let inner = trimmed.dropFirst().dropLast().trimmingCharacters(in: .whitespacesAndNewlines)
+                // 移除字符串的引号，因为在 JSON 模板中已经有引号
+                // Remove quotes from string, as they already exist in JSON template
+                if inner.hasPrefix("\"") && inner.hasSuffix("\"") {
+                    return String(inner.dropFirst().dropLast())
+                }
+                return inner
+            }
+        }
+        // 如果失败，手动转义
+        // Manual escape if JSONSerialization fails
+        return text
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+            .replacingOccurrences(of: "\t", with: "\\t")
     }
 }
