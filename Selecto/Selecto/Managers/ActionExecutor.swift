@@ -285,23 +285,17 @@ class ActionExecutor {
             var responseLines: [String] = []
             responseLines.append("状态码: \(httpResponse.statusCode)")
             
-            if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                // 尝试格式化 JSON
-                // Try to format JSON
-                if let jsonObject = try? JSONSerialization.jsonObject(with: data),
-                   let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted]),
-                   let prettyString = String(data: prettyData, encoding: .utf8) {
-                    responseLines.append(contentsOf: prettyString.components(separatedBy: .newlines).filter { !$0.isEmpty })
-                } else {
-                    responseLines.append(contentsOf: responseString.components(separatedBy: .newlines).filter { !$0.isEmpty })
-                }
+            if let data = data, !data.isEmpty {
+                let processedLines = self.processResponseData(data)
+                responseLines.append(contentsOf: processedLines)
             }
             
             DispatchQueue.main.async {
                 if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
                     completion(.httpResponse(responseLines))
                 } else {
-                    completion(.failure("HTTP \(httpResponse.statusCode): " + (responseLines.dropFirst().joined(separator: "\n"))))
+                    let errorDetail = responseLines.dropFirst().joined(separator: "\n")
+                    completion(.failure("HTTP \(httpResponse.statusCode): \(errorDetail)"))
                 }
             }
         }
@@ -337,5 +331,25 @@ class ActionExecutor {
             .replacingOccurrences(of: "\n", with: "\\n")
             .replacingOccurrences(of: "\r", with: "\\r")
             .replacingOccurrences(of: "\t", with: "\\t")
+    }
+    
+    /// 处理 HTTP 响应数据
+    /// Process HTTP response data
+    private func processResponseData(_ data: Data) -> [String] {
+        guard let responseString = String(data: data, encoding: .utf8) else {
+            return []
+        }
+        
+        // 尝试格式化 JSON
+        // Try to format JSON
+        if let jsonObject = try? JSONSerialization.jsonObject(with: data),
+           let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted]),
+           let prettyString = String(data: prettyData, encoding: .utf8) {
+            return prettyString.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        }
+        
+        // 返回原始响应
+        // Return raw response
+        return responseString.components(separatedBy: .newlines).filter { !$0.isEmpty }
     }
 }
