@@ -482,6 +482,17 @@ struct PreferencesView: View {
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    Toggle("支持双击选择", isOn: $preferences.doubleClickSelectionEnabled)
+                        .toggleStyle(.switch)
+
+                    Text("启用后，双击选择文本时将识别选中的文本并显示工具栏。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
                     if preferences.forceSelectionEnabled {
                         Divider()
                             .padding(.vertical, 4)

@@ -155,7 +155,9 @@ class SelectionMonitor {
         if let downDate = lastMouseDownDate {
             let interval = Date().timeIntervalSince(downDate)
             if interval < 0.3 {
-                shouldIgnoreNextSelection = true
+                // 如果启用了双击选择支持，不忽略短时选择
+                // If double-click selection is enabled, don't ignore short selections
+                shouldIgnoreNextSelection = !AppPreferences.shared.doubleClickSelectionEnabled
             } else {
                 shouldIgnoreNextSelection = false
             }
