@@ -1165,28 +1165,23 @@ struct ActionEditorView: View {
         case .openURL:
             _urlParameter = State(initialValue: action?.parameters["url"] ?? "")
             _scriptContent = State(initialValue: "")
-            _httpURL = State(initialValue: "")
-            _httpMethod = State(initialValue: "GET")
-            _httpHeaders = State(initialValue: "")
-            _httpBody = State(initialValue: "")
             _jsonPath = State(initialValue: "")
         case .executeScript:
             _urlParameter = State(initialValue: "")
             _scriptContent = State(initialValue: action?.parameters["script"] ?? "")
-            _httpURL = State(initialValue: "")
-            _httpMethod = State(initialValue: "GET")
-            _httpHeaders = State(initialValue: "")
-            _httpBody = State(initialValue: "")
             _jsonPath = State(initialValue: action?.parameters["jsonPath"] ?? "")
         case .http:
             _urlParameter = State(initialValue: "")
             _scriptContent = State(initialValue: "")
-            _httpURL = State(initialValue: action?.parameters["url"] ?? "")
-            _httpMethod = State(initialValue: action?.parameters["method"] ?? "GET")
-            _httpHeaders = State(initialValue: action?.parameters["headers"] ?? "")
-            _httpBody = State(initialValue: action?.parameters["body"] ?? "")
             _jsonPath = State(initialValue: action?.parameters["jsonPath"] ?? "")
         }
+        
+        // 初始化 HTTP 特定参数（仅在 HTTP 类型时从 action 读取）
+        // Initialize HTTP-specific parameters (only load from action for HTTP type)
+        _httpURL = State(initialValue: actionType == .http ? (action?.parameters["url"] ?? "") : "")
+        _httpMethod = State(initialValue: actionType == .http ? (action?.parameters["method"] ?? "GET") : "GET")
+        _httpHeaders = State(initialValue: actionType == .http ? (action?.parameters["headers"] ?? "") : "")
+        _httpBody = State(initialValue: actionType == .http ? (action?.parameters["body"] ?? "") : "")
     }
     
     var body: some View {
