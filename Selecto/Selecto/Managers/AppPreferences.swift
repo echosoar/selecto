@@ -33,13 +33,25 @@ final class AppPreferences: ObservableObject {
         }
     }
 
+    /// 是否启用双击选择支持
+    /// Whether double-click selection support is enabled
+    @Published var doubleClickSelectionEnabled: Bool {
+        didSet {
+            if oldValue != doubleClickSelectionEnabled {
+                userDefaults.set(doubleClickSelectionEnabled, forKey: Self.doubleClickSelectionKey)
+            }
+        }
+    }
+
     private let userDefaults: UserDefaults
     private static let forceSelectionKey = "ForceSelectionEnabled"
     private static let forceSelectionExcludedAppsKey = "ForceSelectionExcludedApps"
+    private static let doubleClickSelectionKey = "DoubleClickSelectionEnabled"
 
     private init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
         forceSelectionEnabled = userDefaults.object(forKey: Self.forceSelectionKey) as? Bool ?? false
         forceSelectionExcludedApps = userDefaults.object(forKey: Self.forceSelectionExcludedAppsKey) as? [String] ?? []
+        doubleClickSelectionEnabled = userDefaults.object(forKey: Self.doubleClickSelectionKey) as? Bool ?? false
     }
 }
