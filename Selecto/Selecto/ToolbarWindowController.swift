@@ -300,6 +300,14 @@ extension ToolbarWindowController: ToolbarViewDelegate {
                 self.toolbarView?.hideLoading()
                 self.handleExecutionResult(result)
             }
+        case .http:
+            toolbarView?.showLoading(message: "请求发送中……")
+            resizeWindowToFitContent()
+            ActionExecutor.shared.execute(action, with: selectedText) { [weak self] result in
+                guard let self = self else { return }
+                self.toolbarView?.hideLoading()
+                self.handleExecutionResult(result)
+            }
         }
     }
     
@@ -310,6 +318,9 @@ extension ToolbarWindowController: ToolbarViewDelegate {
             // Auto-hide toolbar after opening link
             hideToolbar(force: true)
         case .scriptOutput(let lines):
+            toolbarView?.showScriptOutput(lines)
+            resizeWindowToFitContent()
+        case .httpResponse(let lines):
             toolbarView?.showScriptOutput(lines)
             resizeWindowToFitContent()
         case .failure(let message):
