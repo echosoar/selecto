@@ -1246,6 +1246,7 @@ struct ActionEditorView: View {
                         Toggle("启用", isOn: $isEnabled)
                             .padding(.top, 8)
                     }
+                    .padding(.horizontal, 20)
                 }
                 
                 Section(header: Text("匹配条件")) {
@@ -1259,6 +1260,7 @@ struct ActionEditorView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
+                    .padding(.horizontal, 20)
                 }
                 
                 Section(header: Text("参数")) {
@@ -1272,6 +1274,7 @@ struct ActionEditorView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        .padding(.horizontal, 20)
                     } else if type == .executeScript {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("脚本内容")
@@ -1284,22 +1287,22 @@ struct ActionEditorView: View {
                                     RoundedRectangle(cornerRadius: 6)
                                         .stroke(Color.secondary.opacity(0.3))
                                 )
+                                .disableAutocorrection(true)
                             Text("脚本将在 /bin/zsh 下执行，可使用 {text} 或 SELECTO_TEXT 环境变量获取选中文本")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
-                            Divider()
-                                .padding(.vertical, 4)
-                            
                             Text("JSON 路径提取（可选）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                                .padding(.top, 8)
                             TextField("", text: $jsonPath)
                                 .font(.system(.body, design: .monospaced))
                             Text("例如: data.items.0.name - 从 JSON 结果中提取指定路径的值，支持数组索引（如 a.0.c）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        .padding(.horizontal, 20)
                     } else if type == .http {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("URL")
@@ -1310,12 +1313,10 @@ struct ActionEditorView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
-                            Divider()
-                                .padding(.vertical, 4)
-                            
                             Text("Method")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                                .padding(.top, 8)
                             Picker("", selection: $httpMethod) {
                                 Text("GET").tag("GET")
                                 Text("POST").tag("POST")
@@ -1323,12 +1324,10 @@ struct ActionEditorView: View {
                             }
                             .labelsHidden()
                             
-                            Divider()
-                                .padding(.vertical, 4)
-                            
                             Text("Headers (JSON)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                                .padding(.top, 8)
                             TextEditor(text: $httpHeaders)
                                 .font(.system(.body, design: .monospaced))
                                 .frame(minHeight: 60)
@@ -1336,17 +1335,16 @@ struct ActionEditorView: View {
                                     RoundedRectangle(cornerRadius: 6)
                                         .stroke(Color.secondary.opacity(0.3))
                                 )
+                                .disableAutocorrection(true)
                             Text("例如: {\"Authorization\": \"Bearer token\", \"Content-Type\": \"application/json\"}")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
                             if httpMethod == "POST" || httpMethod == "PUT" {
-                                Divider()
-                                    .padding(.vertical, 4)
-                                
                                 Text("Body (JSON)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .padding(.top, 8)
                                 TextEditor(text: $httpBody)
                                     .font(.system(.body, design: .monospaced))
                                     .frame(minHeight: 80)
@@ -1354,23 +1352,23 @@ struct ActionEditorView: View {
                                         RoundedRectangle(cornerRadius: 6)
                                             .stroke(Color.secondary.opacity(0.3))
                                     )
+                                    .disableAutocorrection(true)
                                 Text("例如: {\"query\": \"{text}\"}")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
                             
-                            Divider()
-                                .padding(.vertical, 4)
-                            
                             Text("JSON 路径提取（可选）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                                .padding(.top, 8)
                             TextField("", text: $jsonPath)
                                 .font(.system(.body, design: .monospaced))
                             Text("例如: data.items.0.name - 从 JSON 结果中提取指定路径的值，支持数组索引（如 a.0.c）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        .padding(.horizontal, 20)
                     }
                 }
                 
