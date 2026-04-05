@@ -200,7 +200,10 @@ class SelectionMonitor {
             return
         }
 
-        if let _ = lastMouseDownLocation,
+        // 仅在双击选择未启用时检查移动阈值
+        // Only check movement threshold when double-click selection is disabled
+        if !AppPreferences.shared.doubleClickSelectionEnabled,
+           let _ = lastMouseDownLocation,
            let _ = lastMouseUpLocation,
            !didMeetMovementThreshold {
             if currentSelectedText != nil {

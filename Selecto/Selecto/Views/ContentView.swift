@@ -692,6 +692,27 @@ struct PreferencesView: View {
                 }
                 .padding()
             }
+            
+            // 问题反馈
+            // Issue feedback
+            GroupBox(label: Label("问题反馈", systemImage: "exclamationmark.bubble")) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("遇到问题或有建议？欢迎在 GitHub 上提交反馈")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    Button(action: {
+                        if let url = URL(string: "https://github.com/echosoar/selecto/issues/new") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }) {
+                        Label("提交问题反馈", systemImage: "arrow.up.right.square")
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding()
+            }
             }
             .padding(32)
         }
@@ -1199,34 +1220,66 @@ struct ActionEditorView: View {
         ScrollView {
             Form {
                 Section(header: Text("基本信息")) {
-                    TextField("名称", text: $name)
-                    TextField("显示名称", text: $displayName)
-                    
-                    Picker("类型", selection: $type) {
-                        ForEach(ActionType.allCases, id: \.self) { type in
-                            Text(type.displayName).tag(type)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("名称")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("", text: $name)
+                        
+                        Text("显示名称")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
+                        TextField("", text: $displayName)
+                        
+                        Text("类型")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
+                        Picker("", selection: $type) {
+                            ForEach(ActionType.allCases, id: \.self) { type in
+                                Text(type.displayName).tag(type)
+                            }
                         }
+                        .labelsHidden()
+                        
+                        Toggle("启用", isOn: $isEnabled)
+                            .padding(.top, 8)
                     }
-                    
-                    Toggle("启用", isOn: $isEnabled)
+                    .padding(.horizontal, 20)
                 }
                 
                 Section(header: Text("匹配条件")) {
-                    TextField("正则表达式", text: $matchPattern)
-                        .font(.system(.body, design: .monospaced))
-                    Text("留空表示匹配所有文本")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("正则表达式")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("", text: $matchPattern)
+                            .font(.system(.body, design: .monospaced))
+                        Text("留空表示匹配所有文本")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 20)
                 }
                 
                 Section(header: Text("参数")) {
                     if type == .openURL {
-                        TextField("URL 模板", text: $urlParameter)
-                        Text("使用 {text} 作为占位符")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("URL 模板")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            TextField("", text: $urlParameter)
+                            Text("使用 {text} 作为占位符")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 20)
                     } else if type == .executeScript {
                         VStack(alignment: .leading, spacing: 8) {
+                            Text("脚本内容")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                             TextEditor(text: $scriptContent)
                                 .font(.system(.body, design: .monospaced))
                                 .frame(minHeight: 160)
@@ -1234,38 +1287,47 @@ struct ActionEditorView: View {
                                     RoundedRectangle(cornerRadius: 6)
                                         .stroke(Color.secondary.opacity(0.3))
                                 )
+                                .disableAutocorrection(true)
                             Text("脚本将在 /bin/zsh 下执行，可使用 {text} 或 SELECTO_TEXT 环境变量获取选中文本")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
-                            Divider()
-                                .padding(.vertical, 4)
-                            
                             Text("JSON 路径提取（可选）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            TextField("例如: data.items.0.name", text: $jsonPath)
+                                .padding(.top, 8)
+                            TextField("", text: $jsonPath)
                                 .font(.system(.body, design: .monospaced))
-                            Text("从 JSON 结果中提取指定路径的值，支持数组索引（如 a.0.c）")
+                            Text("例如: data.items.0.name - 从 JSON 结果中提取指定路径的值，支持数组索引（如 a.0.c）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        .padding(.horizontal, 20)
                     } else if type == .http {
                         VStack(alignment: .leading, spacing: 8) {
-                            TextField("URL", text: $httpURL)
+                            Text("URL")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            TextField("", text: $httpURL)
                             Text("使用 {text} 作为选中文本的占位符")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
-                            Picker("Method", selection: $httpMethod) {
+                            Text("Method")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 8)
+                            Picker("", selection: $httpMethod) {
                                 Text("GET").tag("GET")
                                 Text("POST").tag("POST")
                                 Text("PUT").tag("PUT")
                             }
+                            .labelsHidden()
                             
                             Text("Headers (JSON)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                                .padding(.top, 8)
                             TextEditor(text: $httpHeaders)
                                 .font(.system(.body, design: .monospaced))
                                 .frame(minHeight: 60)
@@ -1273,6 +1335,7 @@ struct ActionEditorView: View {
                                     RoundedRectangle(cornerRadius: 6)
                                         .stroke(Color.secondary.opacity(0.3))
                                 )
+                                .disableAutocorrection(true)
                             Text("例如: {\"Authorization\": \"Bearer token\", \"Content-Type\": \"application/json\"}")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -1281,6 +1344,7 @@ struct ActionEditorView: View {
                                 Text("Body (JSON)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .padding(.top, 8)
                                 TextEditor(text: $httpBody)
                                     .font(.system(.body, design: .monospaced))
                                     .frame(minHeight: 80)
@@ -1288,23 +1352,23 @@ struct ActionEditorView: View {
                                         RoundedRectangle(cornerRadius: 6)
                                             .stroke(Color.secondary.opacity(0.3))
                                     )
+                                    .disableAutocorrection(true)
                                 Text("例如: {\"query\": \"{text}\"}")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
                             
-                            Divider()
-                                .padding(.vertical, 4)
-                            
                             Text("JSON 路径提取（可选）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            TextField("例如: data.items.0.name", text: $jsonPath)
+                                .padding(.top, 8)
+                            TextField("", text: $jsonPath)
                                 .font(.system(.body, design: .monospaced))
-                            Text("从 JSON 结果中提取指定路径的值，支持数组索引（如 a.0.c）")
+                            Text("例如: data.items.0.name - 从 JSON 结果中提取指定路径的值，支持数组索引（如 a.0.c）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        .padding(.horizontal, 20)
                     }
                 }
                 
