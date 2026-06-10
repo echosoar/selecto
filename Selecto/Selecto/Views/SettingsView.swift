@@ -24,13 +24,9 @@ struct SettingsView: View {
     /// Selected action
     @State private var selectedAction: ActionItem?
     
-    /// 是否显示添加动作表单
-    /// Whether to show add action sheet
-    @State private var showingAddAction = false
-    
-    /// 是否显示编辑动作表单
-    /// Whether to show edit action sheet
-    @State private var showingEditAction = false
+    /// Modal 弹窗
+    /// Modal presenter
+    @Environment(\.modalPresenter) private var modalPresenter
     
     // MARK: - Body
     
@@ -45,7 +41,7 @@ struct SettingsView: View {
                         .contextMenu {
                             Button("编辑") {
                                 selectedAction = action
-                                showingEditAction = true
+                                openEditModal(for: action)
                             }
                             Button("删除", role: .destructive) {
                                 deleteAction(action)
@@ -58,7 +54,7 @@ struct SettingsView: View {
             .frame(minWidth: 250)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddAction = true }) {
+                    Button(action: { openAddModal() }) {
                         Image(systemName: "plus")
                     }
                 }
@@ -74,23 +70,33 @@ struct SettingsView: View {
             }
         }
         .frame(minWidth: 800, minHeight: 600)
-        .sheet(isPresented: $showingAddAction) {
-            ActionEditorView(action: nil) { newAction in
-                ActionManager.shared.addAction(newAction)
-                refreshActions()
-            }
-        }
-        .sheet(isPresented: $showingEditAction) {
-            if let action = selectedAction {
-                ActionEditorView(action: action) { updatedAction in
-                    ActionManager.shared.updateAction(updatedAction)
-                    refreshActions()
-                }
-            }
-        }
     }
     
     // MARK: - Methods
+    
+    /// 打开添加动作弹窗
+    /// Open add action modal
+    private func openAddModal() {
+        modalPresenter?.open(title: "添加动作", data: ()) { ctx in
+            ActionEditorView(action: nil, onSave: { newAction in
+                ActionManager.shared.addAction(newAction)
+                refreshActions()
+                ctx.close()
+            }, onCancel: { ctx.close() })
+        }
+    }
+    
+    /// 打开编辑动作弹窗
+    /// Open edit action modal
+    private func openEditModal(for action: ActionItem) {
+        modalPresenter?.open(title: "编辑动作", data: action) { ctx in
+            ActionEditorView(action: ctx.data, onSave: { updatedAction in
+                ActionManager.shared.updateAction(updatedAction)
+                refreshActions()
+                ctx.close()
+            }, onCancel: { ctx.close() })
+        }
+    }
     
     /// 删除动作
     /// Delete action

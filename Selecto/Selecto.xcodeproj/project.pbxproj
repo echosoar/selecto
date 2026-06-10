@@ -20,6 +20,9 @@
 		100000000000000C /* SelectionHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000E /* SelectionHistoryManager.swift */; };
 		100000000000000D /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000F /* AppPreferences.swift */; };
 		100000000000000E /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000010 /* UpdateManager.swift */; };
+		100000000000000F /* ModalUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000011 /* ModalUtils.swift */; };
+		1000000000000010 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000012 /* AppState.swift */; };
+		1000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2000000000000013 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +41,9 @@
 		200000000000000E /* SelectionHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionHistoryManager.swift; sourceTree = "<group>"; };
 		200000000000000F /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
 		2000000000000010 /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
+		2000000000000011 /* ModalUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModalUtils.swift; sourceTree = "<group>"; };
+		2000000000000012 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		2000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3000000000000001 /* Selecto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Selecto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -70,6 +76,7 @@
 				5000000000000004 /* Models */,
 				5000000000000005 /* Managers */,
 				5000000000000006 /* Views */,
+				2000000000000013 /* Assets.xcassets */,
 				200000000000000B /* Info.plist */,
 				200000000000000C /* Selecto.entitlements */,
 			);
@@ -101,6 +108,8 @@
 				200000000000000E /* SelectionHistoryManager.swift */,
 				200000000000000F /* AppPreferences.swift */,
 				2000000000000010 /* UpdateManager.swift */,
+				2000000000000011 /* ModalUtils.swift */,
+				2000000000000012 /* AppState.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -142,7 +151,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 1630;
 				TargetAttributes = {
 					6000000000000001 = {
 						CreatedOnToolsVersion = 15.0;
@@ -172,6 +181,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1000000000000011 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -195,6 +205,8 @@
 				100000000000000C /* SelectionHistoryManager.swift in Sources */,
 				100000000000000D /* AppPreferences.swift in Sources */,
 				100000000000000E /* UpdateManager.swift in Sources */,
+				100000000000000F /* ModalUtils.swift in Sources */,
+				1000000000000010 /* AppState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -235,6 +247,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -298,6 +311,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -329,6 +343,7 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 12;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = GS6A4SC9KD;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -361,6 +376,7 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 12;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = GS6A4SC9KD;
 				ENABLE_HARDENED_RUNTIME = YES;

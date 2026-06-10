@@ -240,21 +240,14 @@ struct ActionsView: View {
     /// Selected action
     @State private var selectedAction: ActionItem?
     
-    /// 是否显示添加动作表单
-    /// Whether to show add action sheet
-    @State private var showingAddAction = false
-    
-    /// 是否显示编辑动作表单
-    /// Whether to show edit action sheet
-    @State private var showingEditAction = false
+    /// Modal 弹窗
+    /// Modal presenter
+    @Environment(\.modalPresenter) private var modalPresenter
     
     var body: some View {
         GeometryReader { geometry in
-            let contentWidth = min(geometry.size.width, 1100)
-            let sidebarWidth = max(contentWidth * 0.35, 280)
-            let detailWidth = max(contentWidth - sidebarWidth, 320)
             
-            HStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 0) {
                 VStack(spacing: 0) {
                     sidebarHeader
                     List(selection: $selectedAction) {
@@ -275,13 +268,10 @@ struct ActionsView: View {
                         }
                     }
                     .listStyle(InsetListStyle())
-                    .padding(.leading, 12)
-                    .padding(.trailing, 4)
                 }
-                .frame(width: sidebarWidth, height: geometry.size.height)
+                .frame(width: 300, height: geometry.size.height)
                 
                 Divider()
-                    .padding(.vertical, 24)
                 
                 Group {
                     if let action = selectedAction {
@@ -289,7 +279,13 @@ struct ActionsView: View {
                             action: action,
                             onEdit: { selected in
                                 selectedAction = selected
-                                showingEditAction = true
+                                modalPresenter?.open(title: "编辑动作", data: selected) { ctx in
+                                    ActionEditorView(action: ctx.data, onSave: { updatedAction in
+                                        ActionManager.shared.updateAction(updatedAction)
+                                        refreshActions(selecting: updatedAction.id)
+                                        ctx.close()
+                                    }, onCancel: { ctx.close() })
+                                }
                             },
                             onDelete: { toDelete in
                                 deleteAction(toDelete)
@@ -302,26 +298,8 @@ struct ActionsView: View {
                             .multilineTextAlignment(.center)
                     }
                 }
-                .frame(width: detailWidth, height: geometry.size.height, alignment: .topLeading)
-                .padding(24)
             }
-            .frame(width: contentWidth, height: geometry.size.height)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.vertical, 24)
-        }
-        .sheet(isPresented: $showingAddAction) {
-            ActionEditorView(action: nil) { newAction in
-                ActionManager.shared.addAction(newAction)
-                refreshActions(selecting: newAction.id)
-            }
-        }
-        .sheet(isPresented: $showingEditAction) {
-            if let action = selectedAction {
-                ActionEditorView(action: action) { updatedAction in
-                    ActionManager.shared.updateAction(updatedAction)
-                    refreshActions(selecting: updatedAction.id)
-                }
-            }
         }
         .onAppear(perform: ensureSelection)
         .onReceive(NotificationCenter.default.publisher(for: .actionsDidUpdate)) { _ in
@@ -390,7 +368,15 @@ struct ActionsView: View {
             .controlSize(.small)
             .buttonStyle(.borderless)
             .disabled(selectedAction.map(isLastAction) ?? true)
-            Button(action: { showingAddAction = true }) {
+            Button(action: {
+                modalPresenter?.open(title: "添加动作", data: ()) { ctx in
+                    ActionEditorView(action: nil, onSave: { newAction in
+                        ActionManager.shared.addAction(newAction)
+                        refreshActions(selecting: newAction.id)
+                        ctx.close()
+                    }, onCancel: { ctx.close() })
+                }
+            }) {
                 Label("添加", systemImage: "plus")
                     .labelStyle(.iconOnly)
             }
@@ -461,9 +447,9 @@ struct PreferencesView: View {
     /// Bundle ID for new excluded app
     @State private var newExcludedAppBundleId: String = ""
 
-    /// 是否显示添加排除应用的弹窗
-    /// Whether to show add excluded app dialog
-    @State private var showingAddExcludedApp = false
+    /// Modal 弹窗
+    /// Modal presenter
+    @Environment(\.modalPresenter) private var modalPresenter
 
     var body: some View {
         ScrollView {
@@ -472,8 +458,11 @@ struct PreferencesView: View {
                     .font(.largeTitle)
                     .bold()
 
-                GroupBox(label: Label("文本选择", systemImage: "text.cursor")) {
                 VStack(alignment: .leading, spacing: 12) {
+                    Label("文本选择", systemImage: "text.cursor")
+                        .font(.headline)
+                    
+                    VStack(alignment: .leading, spacing: 12) {
                     Toggle("开启强制选词", isOn: $preferences.forceSelectionEnabled)
                         .toggleStyle(.switch)
 
@@ -503,7 +492,22 @@ struct PreferencesView: View {
                                     .font(.subheadline)
                                     .fontWeight(.medium)
                                 Spacer()
-                                Button(action: { showingAddExcludedApp = true }) {
+                                Button(action: {
+                                    newExcludedAppBundleId = ""
+                                    modalPresenter?.open(title: "添加排除应用", data: ()) { ctx in
+                                        AddExcludedAppView(
+                                            bundleId: $newExcludedAppBundleId,
+                                            onAdd: {
+                                                addExcludedApp()
+                                                ctx.close()
+                                            },
+                                            onCancel: {
+                                                newExcludedAppBundleId = ""
+                                                ctx.close()
+                                            }
+                                        )
+                                    }
+                                }) {
                                     Image(systemName: "plus.circle")
                                 }
                                 .buttonStyle(.borderless)
@@ -543,11 +547,18 @@ struct PreferencesView: View {
                     }
                 }
                 .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.secondary.opacity(0.1))
+                )
             }
             
             // 配置管理
             // Configuration management
-            GroupBox(label: Label("配置", systemImage: "folder")) {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("配置", systemImage: "folder")
+                    .font(.headline)
+                
                 VStack(alignment: .leading, spacing: 12) {
                     Text("打开配置文件目录以查看或备份您的设置")
                         .font(.caption)
@@ -562,11 +573,18 @@ struct PreferencesView: View {
                     .buttonStyle(.bordered)
                 }
                 .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.secondary.opacity(0.1))
+                )
             }
             
             // 应用更新
             // App updates
-            GroupBox(label: Label("更新", systemImage: "arrow.down.circle")) {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("更新", systemImage: "arrow.down.circle")
+                    .font(.headline)
+                
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text("当前版本:")
@@ -691,46 +709,15 @@ struct PreferencesView: View {
                         .italic()
                 }
                 .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.secondary.opacity(0.1))
+                )
             }
             }
             .padding(32)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .sheet(isPresented: $showingAddExcludedApp) {
-            VStack(spacing: 20) {
-                Text("添加排除应用")
-                    .font(.headline)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("输入应用的 Bundle ID")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    TextField("例如: com.apple.Terminal", text: $newExcludedAppBundleId)
-                        .textFieldStyle(.roundedBorder)
-
-                    Text("您可以在应用包的 Info.plist 中找到 Bundle ID")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .italic()
-                }
-
-                HStack {
-                    Button("取消") {
-                        showingAddExcludedApp = false
-                        newExcludedAppBundleId = ""
-                    }
-
-                    Button("添加") {
-                        addExcludedApp()
-                    }
-                    .disabled(newExcludedAppBundleId.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .buttonStyle(.borderedProminent)
-                }
-            }
-            .padding()
-            .frame(width: 400)
-        }
     }
 
     private func addExcludedApp() {
@@ -738,12 +725,10 @@ struct PreferencesView: View {
         guard !trimmedId.isEmpty else { return }
         guard !preferences.forceSelectionExcludedApps.contains(trimmedId) else {
             newExcludedAppBundleId = ""
-            showingAddExcludedApp = false
             return
         }
         preferences.forceSelectionExcludedApps.append(trimmedId)
         newExcludedAppBundleId = ""
-        showingAddExcludedApp = false
     }
 
     private func removeExcludedApp(_ bundleId: String) {
@@ -967,38 +952,65 @@ struct ActionDetailView: View {
                         .bold()
                     
                     // 基本信息
-                    GroupBox(label: Text("基本信息")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("基本信息")
+                            .font(.headline)
+                        
                         VStack(alignment: .leading, spacing: 10) {
                             InfoRow(label: "名称", value: action.name)
                             InfoRow(label: "类型", value: action.type.displayName)
                             InfoRow(label: "状态", value: action.isEnabled ? "启用" : "禁用")
                         }
                         .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.secondary.opacity(0.1))
+                        )
                     }
+                    .padding(.bottom, 24)
                     
                     // 匹配条件
                     if let pattern = action.matchPattern, !pattern.isEmpty {
-                        GroupBox(label: Text("匹配条件")) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("匹配条件")
+                                .font(.headline)
+                            
                             VStack(alignment: .leading) {
                                 Text("正则表达式：\(pattern)")
                                     .font(.system(.body, design: .monospaced))
                             }
                             .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.secondary.opacity(0.1))
+                            )
                         }
+                        .padding(.bottom, 24)
                     }
                     
                     // 参数
                     if action.type == .openURL, let url = action.parameters["url"], !url.isEmpty {
-                        GroupBox(label: Text("URL 模板")) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("URL 模板")
+                                .font(.headline)
+                            
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(url)
                                     .font(.system(.body, design: .monospaced))
                                     .textSelection(.enabled)
                             }
                             .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.secondary.opacity(0.1))
+                            )
                         }
+                        .padding(.bottom, 24)
                     } else if action.type == .executeScript, let script = action.parameters["script"], !script.isEmpty {
-                        GroupBox(label: Text("脚本内容")) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("脚本内容")
+                                .font(.headline)
+                            
                             ScrollView {
                                 Text(script)
                                     .font(.system(.body, design: .monospaced))
@@ -1008,43 +1020,75 @@ struct ActionDetailView: View {
                             .frame(minHeight: 120)
                             .padding(.horizontal)
                             .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.secondary.opacity(0.1))
+                            )
                         }
+                        .padding(.bottom, 24)
                         
                         if let jsonPath = action.parameters["jsonPath"], !jsonPath.isEmpty {
-                            GroupBox(label: Text("JSON 路径提取")) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("JSON 路径提取")
+                                    .font(.headline)
+                                
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text(jsonPath)
                                         .font(.system(.body, design: .monospaced))
                                         .textSelection(.enabled)
                                 }
                                 .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.secondary.opacity(0.1))
+                                )
                             }
+                            .padding(.bottom, 24)
                         }
                     } else if action.type == .http {
                         if let url = action.parameters["url"], !url.isEmpty {
-                            GroupBox(label: Text("URL")) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("URL")
+                                    .font(.headline)
+                                
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text(url)
                                         .font(.system(.body, design: .monospaced))
                                         .textSelection(.enabled)
                                 }
                                 .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.secondary.opacity(0.1))
+                                )
                             }
+                            .padding(.bottom, 24)
                         }
                         
                         if let method = action.parameters["method"], !method.isEmpty {
-                            GroupBox(label: Text("Method")) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Method")
+                                    .font(.headline)
+                                
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text(method)
                                         .font(.system(.body, design: .monospaced))
                                         .textSelection(.enabled)
                                 }
                                 .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.secondary.opacity(0.1))
+                                )
                             }
+                            .padding(.bottom, 24)
                         }
                         
                         if let headers = action.parameters["headers"], !headers.isEmpty {
-                            GroupBox(label: Text("Headers")) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Headers")
+                                    .font(.headline)
+                                
                                 ScrollView {
                                     Text(headers)
                                         .font(.system(.body, design: .monospaced))
@@ -1054,11 +1098,19 @@ struct ActionDetailView: View {
                                 .frame(minHeight: 60)
                                 .padding(.horizontal)
                                 .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.secondary.opacity(0.1))
+                                )
                             }
+                            .padding(.bottom, 24)
                         }
                         
                         if let body = action.parameters["body"], !body.isEmpty {
-                            GroupBox(label: Text("Body")) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Body")
+                                    .font(.headline)
+                                
                                 ScrollView {
                                     Text(body)
                                         .font(.system(.body, design: .monospaced))
@@ -1068,18 +1120,31 @@ struct ActionDetailView: View {
                                 .frame(minHeight: 80)
                                 .padding(.horizontal)
                                 .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.secondary.opacity(0.1))
+                                )
                             }
+                            .padding(.bottom, 24)
                         }
                         
                         if let jsonPath = action.parameters["jsonPath"], !jsonPath.isEmpty {
-                            GroupBox(label: Text("JSON 路径提取")) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("JSON 路径提取")
+                                    .font(.headline)
+                                
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text(jsonPath)
                                         .font(.system(.body, design: .monospaced))
                                         .textSelection(.enabled)
                                 }
                                 .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.secondary.opacity(0.1))
+                                )
                             }
+                            .padding(.bottom, 24)
                         }
                     }
 
@@ -1143,8 +1208,7 @@ struct InfoRow: View {
 struct ActionEditorView: View {
     let action: ActionItem?
     let onSave: (ActionItem) -> Void
-    
-    @Environment(\.dismiss) var dismiss
+    let onCancel: () -> Void
     
     @State private var name: String
     @State private var displayName: String
@@ -1159,9 +1223,10 @@ struct ActionEditorView: View {
     @State private var httpBody: String
     @State private var jsonPath: String
     
-    init(action: ActionItem?, onSave: @escaping (ActionItem) -> Void) {
+    init(action: ActionItem?, onSave: @escaping (ActionItem) -> Void, onCancel: @escaping () -> Void) {
         self.action = action
         self.onSave = onSave
+        self.onCancel = onCancel
         
         _name = State(initialValue: action?.name ?? "")
         _displayName = State(initialValue: action?.displayName ?? "")
@@ -1197,36 +1262,83 @@ struct ActionEditorView: View {
     
     var body: some View {
         ScrollView {
-            Form {
-                Section(header: Text("基本信息")) {
-                    TextField("名称", text: $name)
-                    TextField("显示名称", text: $displayName)
+            VStack(alignment: .leading, spacing: 20) {
+                // 基本信息
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("基本信息")
+                        .font(.headline)
                     
-                    Picker("类型", selection: $type) {
-                        ForEach(ActionType.allCases, id: \.self) { type in
-                            Text(type.displayName).tag(type)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("名称")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("输入动作名称", text: $name)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("显示名称")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("输入显示名称", text: $displayName)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("类型")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Picker("类型", selection: $type) {
+                            ForEach(ActionType.allCases, id: \.self) { type in
+                                Text(type.displayName).tag(type)
+                            }
                         }
+                        .pickerStyle(.segmented)
                     }
                     
                     Toggle("启用", isOn: $isEnabled)
                 }
                 
-                Section(header: Text("匹配条件")) {
-                    TextField("正则表达式", text: $matchPattern)
-                        .font(.system(.body, design: .monospaced))
+                // 匹配条件
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("匹配条件")
+                        .font(.headline)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("正则表达式")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("输入正则表达式", text: $matchPattern)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.body, design: .monospaced))
+                    }
+                    
                     Text("留空表示匹配所有文本")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
-                Section(header: Text("参数")) {
+                // 参数
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("参数")
+                        .font(.headline)
+                    
                     if type == .openURL {
-                        TextField("URL 模板", text: $urlParameter)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("URL 模板")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            TextField("输入 URL", text: $urlParameter)
+                                .textFieldStyle(.roundedBorder)
+                        }
                         Text("使用 {text} 作为占位符")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     } else if type == .executeScript {
                         VStack(alignment: .leading, spacing: 8) {
+                            Text("脚本内容")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                             TextEditor(text: $scriptContent)
                                 .font(.system(.body, design: .monospaced))
                                 .frame(minHeight: 160)
@@ -1246,48 +1358,65 @@ struct ActionEditorView: View {
                                 .foregroundColor(.secondary)
                             TextField("例如: data.items.0.name", text: $jsonPath)
                                 .font(.system(.body, design: .monospaced))
+                                .textFieldStyle(.roundedBorder)
                             Text("从 JSON 结果中提取指定路径的值，支持数组索引（如 a.0.c）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     } else if type == .http {
                         VStack(alignment: .leading, spacing: 8) {
-                            TextField("URL", text: $httpURL)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("URL")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                TextField("输入 URL", text: $httpURL)
+                                    .textFieldStyle(.roundedBorder)
+                            }
                             Text("使用 {text} 作为选中文本的占位符")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
-                            Picker("Method", selection: $httpMethod) {
-                                Text("GET").tag("GET")
-                                Text("POST").tag("POST")
-                                Text("PUT").tag("PUT")
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Method")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Picker("Method", selection: $httpMethod) {
+                                    Text("GET").tag("GET")
+                                    Text("POST").tag("POST")
+                                    Text("PUT").tag("PUT")
+                                }
+                                .pickerStyle(.segmented)
                             }
                             
-                            Text("Headers (JSON)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            TextEditor(text: $httpHeaders)
-                                .font(.system(.body, design: .monospaced))
-                                .frame(minHeight: 60)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.secondary.opacity(0.3))
-                                )
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Headers (JSON)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                TextEditor(text: $httpHeaders)
+                                    .font(.system(.body, design: .monospaced))
+                                    .frame(minHeight: 60)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.secondary.opacity(0.3))
+                                    )
+                            }
                             Text("例如: {\"Authorization\": \"Bearer token\", \"Content-Type\": \"application/json\"}")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
                             if httpMethod == "POST" || httpMethod == "PUT" {
-                                Text("Body (JSON)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                TextEditor(text: $httpBody)
-                                    .font(.system(.body, design: .monospaced))
-                                    .frame(minHeight: 80)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.secondary.opacity(0.3))
-                                    )
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Body (JSON)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    TextEditor(text: $httpBody)
+                                        .font(.system(.body, design: .monospaced))
+                                        .frame(minHeight: 80)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(Color.secondary.opacity(0.3))
+                                        )
+                                }
                                 Text("例如: {\"query\": \"{text}\"}")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -1296,35 +1425,27 @@ struct ActionEditorView: View {
                             Divider()
                                 .padding(.vertical, 4)
                             
-                            Text("JSON 路径提取（可选）")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            TextField("例如: data.items.0.name", text: $jsonPath)
-                                .font(.system(.body, design: .monospaced))
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("JSON 路径提取（可选）")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                TextField("例如: data.items.0.name", text: $jsonPath)
+                                    .font(.system(.body, design: .monospaced))
+                                    .textFieldStyle(.roundedBorder)
+                            }
                             Text("从 JSON 结果中提取指定路径的值，支持数组索引（如 a.0.c）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
                 }
-                
-                HStack {
-                    Button("取消") {
-                        dismiss()
-                    }
-                    .keyboardShortcut(.cancelAction)
-                    
-                    Spacer()
-                    
-                    Button("保存") {
-                        saveAction()
-                    }
-                    .keyboardShortcut(.defaultAction)
-                }
             }
             .padding()
         }
-        .frame(width: 500, height: 500)
+        .modalBottomActions([
+            ModalActionItem(title: "取消", type: .cancel, onClick: onCancel),
+            ModalActionItem(title: "保存", type: .primary, onClick: { saveAction() })
+        ])
     }
     
     private func saveAction() {
@@ -1369,6 +1490,34 @@ struct ActionEditorView: View {
         )
         
         onSave(newAction)
-        dismiss()
+        onCancel()
+    }
+}
+
+/// 添加排除应用视图
+/// Add excluded app view
+struct AddExcludedAppView: View {
+    @Binding var bundleId: String
+    let onAdd: () -> Void
+    let onCancel: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("输入应用的 Bundle ID")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            TextField("例如: com.apple.Terminal", text: $bundleId)
+                .textFieldStyle(.roundedBorder)
+
+            Text("您可以在应用包的 Info.plist 中找到 Bundle ID")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .italic()
+        }
+        .modalBottomActions([
+            ModalActionItem(title: "取消", type: .cancel, onClick: onCancel),
+            ModalActionItem(title: "添加", type: .primary, onClick: onAdd, isDisabled: bundleId.trimmingCharacters(in: .whitespaces).isEmpty)
+        ])
     }
 }

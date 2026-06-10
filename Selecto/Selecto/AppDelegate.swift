@@ -17,9 +17,14 @@ struct SelectoApp: App {
     /// App delegate
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
+    /// 应用全局状态
+    /// Application global state
+    @StateObject private var appState = AppState.shared
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .withModal(appState: appState)
         }
         .windowStyle(.hiddenTitleBar)
         .commands {

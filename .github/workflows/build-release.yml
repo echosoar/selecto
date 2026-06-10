@@ -81,33 +81,47 @@ jobs:
           hdiutil create -volname "Selecto" -srcfolder "$TMPDIR/dmgroot" -ov -format UDZO "./artifacts/Selecto-${VERSION}.dmg"
           rm -rf "$TMPDIR"
 
-      - name: Checkout selecto repository
+      - name: Create tag and push
         if: steps.check.outputs.skip != 'true'
-        uses: actions/checkout@v4
-        with:
-          repository: echosoar/selecto
-          token: ${{ secrets.GH_PAT_FOR_PUBLISH }}
-          path: selecto-release
-          ref: gh-pages
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="v${VERSION}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping tag creation"
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Created and pushed tag: $TAG"
+          fi
 
-
-      - name: Create or update release in selecto repo
+      - name: Create GitHub Release and upload DMG
         if: steps.check.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_PAT_FOR_PUBLISH }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          cd selecto-release
-          # Use gh CLI if available, fallback to skipping release creation
+          TAG="v${VERSION}"
+          DMG_PATH="./artifacts/Selecto-${VERSION}.dmg"
+
+          if [ ! -f "$DMG_PATH" ]; then
+            echo "Error: DMG not found at $DMG_PATH"
+            exit 1
+          fi
+
+          COMMIT_MSG="${{ steps.check.outputs.commit_message }}"
+
           if command -v gh > /dev/null 2>&1; then
-            if gh release view "v${VERSION}" > /dev/null 2>&1; then
-              for asset in dist/*.dmg; do
-                gh release upload "v${VERSION}" "$asset" --clobber || true
-              done
+            if gh release view "$TAG" > /dev/null 2>&1; then
+              echo "Release $TAG already exists, uploading asset..."
+              gh release upload "$TAG" "$DMG_PATH" --clobber
             else
-              gh release create "v${VERSION}" --title "Selecto v${VERSION}" --notes "" dist/*.dmg || true
+              echo "Creating release $TAG..."
+              gh release create "$TAG" \
+                --title "Selecto ${VERSION}" \
+                --notes "${COMMIT_MSG}" \
+                "$DMG_PATH"
             fi
-            gh release edit "v${VERSION}" --latest || true
+            gh release edit "$TAG" --latest
           else
             echo "Warning: gh CLI not available; skipping release creation step."
           fi
