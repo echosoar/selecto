@@ -138,6 +138,18 @@ class ActionExecutor {
         
         var environment = ProcessInfo.processInfo.environment
         environment["SELECTO_TEXT"] = inputText
+        
+        let preferences = AppPreferences.shared
+        let httpProxy = preferences.httpProxyAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        if preferences.httpProxyEnabled, !httpProxy.isEmpty {
+            environment["http_proxy"] = httpProxy
+            environment["HTTP_PROXY"] = httpProxy
+        }
+        let httpsProxy = preferences.httpsProxyAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        if preferences.httpsProxyEnabled, !httpsProxy.isEmpty {
+            environment["https_proxy"] = httpsProxy
+            environment["HTTPS_PROXY"] = httpsProxy
+        }
         process.environment = environment
         
         let stdoutPipe = Pipe()
@@ -172,11 +184,15 @@ class ActionExecutor {
                     }
                 } else {
                     let message = errorString.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if message.isEmpty {
-                        completion(.failure("脚本执行失败，退出码 \(exitCode)"))
-                    } else {
-                        completion(.failure(message))
+                    let output = outputString.trimmingCharacters(in: .whitespacesAndNewlines)
+                    var parts = ["脚本执行失败，退出码 \(exitCode)"]
+                    if !message.isEmpty {
+                        parts.append(message)
                     }
+                    if !output.isEmpty {
+                        parts.append("已输出内容:\n\(output)")
+                    }
+                    completion(.failure(parts.joined(separator: "\n")))
                 }
             }
         }

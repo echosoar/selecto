@@ -17,41 +17,89 @@ struct ContentView: View {
     /// Selected tab
     @State private var selectedTab = 0
     
+    /// 菜单项
+    /// Menu items
+    private let menuItems: [(title: String, icon: String)] = [
+        ("授权", "lock.shield"),
+        ("动作", "slider.horizontal.3"),
+        ("设置", "gearshape"),
+        ("日志", "clock")
+    ]
+    
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // 权限设置页
-            // Permissions tab
-            PermissionsView()
-                .tabItem {
-                    Label("授权", systemImage: "lock.shield")
+        HStack(spacing: 0) {
+            // 左侧菜单
+            // Left menu
+            ScrollView {
+                VStack(spacing: 4) {
+                    ForEach(menuItems.indices, id: \.self) { index in
+                        menuRow(index: index)
+                    }
                 }
-                .tag(0)
+                .padding(12)
+                .frame(maxWidth: .infinity)
+            }
+            .frame(width: 200)
+            .frame(maxHeight: .infinity)
+            .background(Color(red: 0xf8 / 255, green: 0xf8 / 255, blue: 0xf8 / 255))
             
-            // 动作配置页
-            // Actions tab
-            ActionsView()
-                .tabItem {
-                    Label("动作", systemImage: "slider.horizontal.3")
-                }
-                .tag(1)
-
-            // 设置页
-            // Settings tab
-            PreferencesView()
-                .tabItem {
-                    Label("设置", systemImage: "gearshape")
-                }
-                .tag(2)
+            Divider()
             
-            // 历史记录页
-            // History tab
-            HistoryView()
-                .tabItem {
-                    Label("日志", systemImage: "clock")
+            // 右侧内容
+            // Right content
+            GeometryReader { geometry in
+                ScrollView {
+                    pageContent(height: geometry.size.height)
+                        .frame(maxWidth: .infinity)
                 }
-                .tag(3)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.white)
+            .ignoresSafeArea(.container, edges: .top)
         }
         .frame(minWidth: 800, minHeight: 600)
+        .preferredColorScheme(.light)
+    }
+    
+    /// 菜单行
+    /// Menu row
+    private func menuRow(index: Int) -> some View {
+        let item = menuItems[index]
+        let isSelected = selectedTab == index
+        return Button(action: { selectedTab = index }) {
+            HStack(spacing: 8) {
+                Image(systemName: item.icon)
+                    .frame(width: 20)
+                Text(item.title)
+                Spacer()
+            }
+            .foregroundColor(isSelected ? .white : .primary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isSelected ? Color.accentColor : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+    
+    /// 右侧页面内容；自带列表的页面占满可见高度，其余页面超出时由外层滚动
+    /// Page content; list-based pages fill the visible height, others scroll in the outer ScrollView
+    @ViewBuilder
+    private func pageContent(height: CGFloat) -> some View {
+        switch selectedTab {
+        case 0:
+            PermissionsView().frame(minHeight: height)
+        case 1:
+            ActionsView().frame(height: height)
+        case 2:
+            PreferencesView().frame(minHeight: height)
+        default:
+            HistoryView().frame(height: height)
+        }
     }
 }
 
@@ -131,7 +179,6 @@ struct PermissionsView: View {
             
             Spacer()
         }
-        .padding()
         .onAppear {
             checkPermissions()
         }
@@ -249,7 +296,6 @@ struct ActionsView: View {
             
             HStack(alignment: .top, spacing: 0) {
                 VStack(spacing: 0) {
-                    sidebarHeader
                     List(selection: $selectedAction) {
                         ForEach(actions) { action in
                             ActionRow(action: action)
@@ -266,10 +312,18 @@ struct ActionsView: View {
                                     .disabled(isLastAction(action))
                                 }
                         }
+                        
+                        Button(action: openAddModal) {
+                            Label("添加动作", systemImage: "plus")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.accentColor)
                     }
                     .listStyle(InsetListStyle())
                 }
-                .frame(width: 300, height: geometry.size.height)
+                .frame(width: 200, height: geometry.size.height)
                 
                 Divider()
                 
@@ -298,8 +352,9 @@ struct ActionsView: View {
                             .multilineTextAlignment(.center)
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .onAppear(perform: ensureSelection)
         .onReceive(NotificationCenter.default.publisher(for: .actionsDidUpdate)) { _ in
@@ -338,54 +393,16 @@ struct ActionsView: View {
         }
     }
     
-    /// 侧边栏标题区
-    /// Sidebar header area
-    private var sidebarHeader: some View {
-        HStack(spacing: 12) {
-            Text("动作列表")
-                .font(.title3)
-                .bold()
-                .padding(.leading, 16)
-            Spacer()
-            Button(action: {
-                if let action = selectedAction {
-                    moveActionUp(action)
-                }
-            }) {
-                Image(systemName: "arrow.up")
-            }
-            .controlSize(.small)
-            .buttonStyle(.borderless)
-            .disabled(selectedAction.map(isFirstAction) ?? true)
-            
-            Button(action: {
-                if let action = selectedAction {
-                    moveActionDown(action)
-                }
-            }) {
-                Image(systemName: "arrow.down")
-            }
-            .controlSize(.small)
-            .buttonStyle(.borderless)
-            .disabled(selectedAction.map(isLastAction) ?? true)
-            Button(action: {
-                modalPresenter?.open(title: "添加动作", data: ()) { ctx in
-                    ActionEditorView(action: nil, onSave: { newAction in
-                        ActionManager.shared.addAction(newAction)
-                        refreshActions(selecting: newAction.id)
-                        ctx.close()
-                    }, onCancel: { ctx.close() })
-                }
-            }) {
-                Label("添加", systemImage: "plus")
-                    .labelStyle(.iconOnly)
-            }
-            .controlSize(.small)
-            .buttonStyle(.borderless)
+    /// 打开添加动作弹窗
+    /// Open add action modal
+    private func openAddModal() {
+        modalPresenter?.open(title: "添加动作", data: ()) { ctx in
+            ActionEditorView(action: nil, onSave: { newAction in
+                ActionManager.shared.addAction(newAction)
+                refreshActions(selecting: newAction.id)
+                ctx.close()
+            }, onCancel: { ctx.close() })
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.thinMaterial)
     }
 
     /// 将动作上移一位
@@ -447,277 +464,345 @@ struct PreferencesView: View {
     /// Bundle ID for new excluded app
     @State private var newExcludedAppBundleId: String = ""
 
+    /// 合并默认动作的结果提示
+    /// Result message of merging default actions
+    @State private var mergeResultMessage: String?
+
     /// Modal 弹窗
     /// Modal presenter
     @Environment(\.modalPresenter) private var modalPresenter
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+        VStack(spacing: 0) {
+            HStack {
                 Text("偏好设置")
                     .font(.largeTitle)
                     .bold()
+                
+                Spacer()
+            }
+            .padding()
+            
+            Divider()
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("文本选择", systemImage: "text.cursor")
-                        .font(.headline)
-                    
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+
                     VStack(alignment: .leading, spacing: 12) {
-                    Toggle("开启强制选词", isOn: $preferences.forceSelectionEnabled)
-                        .toggleStyle(.switch)
+                        Label("文本选择", systemImage: "text.cursor")
+                            .font(.headline)
+                        
+                        VStack(alignment: .leading, spacing: 12) {
+                        Toggle("开启强制选词", isOn: $preferences.forceSelectionEnabled)
+                            .toggleStyle(.switch)
 
-                    Text("启用后，如果常规方式无法读取选中文本，将尝试模拟 Command+C，并读取剪贴板内容获取文本。")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Text("启用后，如果常规方式无法读取选中文本，将尝试模拟 Command+C，并读取剪贴板内容获取文本。")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                    Divider()
-                        .padding(.vertical, 4)
-
-                    Toggle("支持双击选择", isOn: $preferences.doubleClickSelectionEnabled)
-                        .toggleStyle(.switch)
-
-                    Text("启用后，双击选择文本时将识别选中的文本并显示工具栏。")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if preferences.forceSelectionEnabled {
                         Divider()
                             .padding(.vertical, 4)
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("排除应用")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                Spacer()
-                                Button(action: {
-                                    newExcludedAppBundleId = ""
-                                    modalPresenter?.open(title: "添加排除应用", data: ()) { ctx in
-                                        AddExcludedAppView(
-                                            bundleId: $newExcludedAppBundleId,
-                                            onAdd: {
-                                                addExcludedApp()
-                                                ctx.close()
-                                            },
-                                            onCancel: {
-                                                newExcludedAppBundleId = ""
-                                                ctx.close()
-                                            }
-                                        )
+                        Toggle("支持双击选择", isOn: $preferences.doubleClickSelectionEnabled)
+                            .toggleStyle(.switch)
+
+                        Text("启用后，双击选择文本时将识别选中的文本并显示工具栏。")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        if preferences.forceSelectionEnabled {
+                            Divider()
+                                .padding(.vertical, 4)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("排除应用")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                    Button(action: {
+                                        newExcludedAppBundleId = ""
+                                        modalPresenter?.open(title: "添加排除应用", data: ()) { ctx in
+                                            AddExcludedAppView(
+                                                bundleId: $newExcludedAppBundleId,
+                                                onAdd: {
+                                                    addExcludedApp()
+                                                    ctx.close()
+                                                },
+                                                onCancel: {
+                                                    newExcludedAppBundleId = ""
+                                                    ctx.close()
+                                                }
+                                            )
+                                        }
+                                    }) {
+                                        Image(systemName: "plus.circle")
                                     }
-                                }) {
-                                    Image(systemName: "plus.circle")
+                                    .buttonStyle(.borderless)
+                                    .help("添加排除应用")
                                 }
-                                .buttonStyle(.borderless)
-                                .help("添加排除应用")
-                            }
 
-                            Text("在以下应用中将不会使用强制选词功能")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            if preferences.forceSelectionExcludedApps.isEmpty {
-                                Text("暂无排除的应用")
+                                Text("在以下应用中将不会使用强制选词功能")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                    .italic()
-                                    .padding(.vertical, 4)
-                            } else {
-                                ForEach(preferences.forceSelectionExcludedApps, id: \.self) { bundleId in
-                                    HStack {
-                                        Text(bundleId)
-                                            .font(.caption)
-                                            .lineLimit(1)
-                                        Spacer()
-                                        Button(action: {
-                                            removeExcludedApp(bundleId)
-                                        }) {
-                                            Image(systemName: "trash")
-                                                .foregroundColor(.red)
+
+                                if preferences.forceSelectionExcludedApps.isEmpty {
+                                    Text("暂无排除的应用")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .italic()
+                                        .padding(.vertical, 4)
+                                } else {
+                                    ForEach(preferences.forceSelectionExcludedApps, id: \.self) { bundleId in
+                                        HStack {
+                                            Text(bundleId)
+                                                .font(.caption)
+                                                .lineLimit(1)
+                                            Spacer()
+                                            Button(action: {
+                                                removeExcludedApp(bundleId)
+                                            }) {
+                                                Image(systemName: "trash")
+                                                    .foregroundColor(.red)
+                                            }
+                                            .buttonStyle(.borderless)
+                                            .help("删除")
                                         }
-                                        .buttonStyle(.borderless)
-                                        .help("删除")
+                                        .padding(.vertical, 2)
                                     }
-                                    .padding(.vertical, 2)
                                 }
                             }
                         }
                     }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.secondary.opacity(0.1))
+                    )
                 }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.secondary.opacity(0.1))
-                )
-            }
-            
-            // 配置管理
-            // Configuration management
-            VStack(alignment: .leading, spacing: 12) {
-                Label("配置", systemImage: "folder")
-                    .font(.headline)
                 
+                // 网络设置
+                // Network settings
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("打开配置文件目录以查看或备份您的设置")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Label("网络设置", systemImage: "network")
+                        .font(.headline)
                     
-                    Button(action: {
-                        updateManager.openConfigDirectory()
-                    }) {
-                        Label("打开配置文件目录", systemImage: "folder.badge.gear")
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("开启 HTTP 代理", isOn: $preferences.httpProxyEnabled)
+                            .toggleStyle(.switch)
+                        
+                        if preferences.httpProxyEnabled {
+                            TextField("例如: http://127.0.0.1:7890", text: $preferences.httpProxyAddress)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Divider()
+                            .padding(.vertical, 4)
+                        
+                        Toggle("开启 HTTPS 代理", isOn: $preferences.httpsProxyEnabled)
+                            .toggleStyle(.switch)
+                        
+                        if preferences.httpsProxyEnabled {
+                            TextField("例如: http://127.0.0.1:7890", text: $preferences.httpsProxyAddress)
+                                .textFieldStyle(.roundedBorder)
+                        }
                     }
-                    .buttonStyle(.bordered)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.secondary.opacity(0.1))
+                    )
                 }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.secondary.opacity(0.1))
-                )
-            }
-            
-            // 应用更新
-            // App updates
-            VStack(alignment: .leading, spacing: 12) {
-                Label("更新", systemImage: "arrow.down.circle")
-                    .font(.headline)
                 
+                // 配置管理
+                // Configuration management
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("当前版本:")
-                            .font(.subheadline)
-                        Text(updateManager.currentVersion)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        Spacer()
-                    }
+                    Label("配置", systemImage: "folder")
+                        .font(.headline)
                     
-                    if let latestVersion = updateManager.latestVersion {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("打开配置文件目录以查看或备份您的设置")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        Button(action: {
+                            updateManager.openConfigDirectory()
+                        }) {
+                            Label("打开配置文件目录", systemImage: "folder.badge.gear")
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Text("将内置的默认动作合并到您的动作列表中，已存在同名动作时会跳过")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        HStack(spacing: 12) {
+                            Button(action: {
+                                let added = ActionManager.shared.mergeDefaultActions()
+                                mergeResultMessage = added > 0 ? "已合并 \(added) 个默认动作" : "没有需要合并的默认动作"
+                            }) {
+                                Label("合并默认动作", systemImage: "arrow.triangle.merge")
+                            }
+                            .buttonStyle(.bordered)
+                            
+                            if let mergeResultMessage {
+                                Text(mergeResultMessage)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.secondary.opacity(0.1))
+                    )
+                }
+                
+                // 应用更新
+                // App updates
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("更新", systemImage: "arrow.down.circle")
+                        .font(.headline)
+                    
+                    VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("最新版本:")
+                            Text("当前版本:")
                                 .font(.subheadline)
-                            Text(latestVersion.version)
+                            Text(updateManager.currentVersion)
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
-                                .foregroundColor(updateManager.hasUpdate ? .green : .secondary)
                             Spacer()
                         }
                         
-                        if updateManager.hasUpdate {
-                            Text("发现新版本！")
-                                .font(.caption)
-                                .foregroundColor(.green)
-                                .fontWeight(.medium)
-                        } else {
-                            Text("您已是最新版本")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        if let releaseNotes = latestVersion.releaseNotes, !releaseNotes.isEmpty {
-                            Divider()
-                                .padding(.vertical, 4)
-                            
-                            Text("更新说明:")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                            
-                            ScrollView {
-                                Text(releaseNotes)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                    .textSelection(.enabled)
+                        if let latestVersion = updateManager.latestVersion {
+                            HStack {
+                                Text("最新版本:")
+                                    .font(.subheadline)
+                                Text(latestVersion.version)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(updateManager.hasUpdate ? .green : .secondary)
+                                Spacer()
                             }
-                            .frame(maxHeight: 100)
-                        }
-                    }
-                    
-                    if let errorMessage = updateManager.errorMessage {
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                    
-                    HStack(spacing: 12) {
-                        Button(action: {
-                            updateManager.checkForUpdates()
-                        }) {
-                            if updateManager.isCheckingForUpdates {
-                                HStack {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
-                                        .frame(width: 16, height: 16)
-                                    Text("检查中...")
-                                }
+                            
+                            if updateManager.hasUpdate {
+                                Text("发现新版本！")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                                    .fontWeight(.medium)
                             } else {
-                                Label("检查更新", systemImage: "arrow.clockwise")
+                                Text("您已是最新版本")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            if let releaseNotes = latestVersion.releaseNotes, !releaseNotes.isEmpty {
+                                Divider()
+                                    .padding(.vertical, 4)
+                                
+                                Text("更新说明:")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                
+                                ScrollView {
+                                    Text(releaseNotes)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                        .textSelection(.enabled)
+                                }
+                                .frame(maxHeight: 100)
                             }
                         }
-                        .buttonStyle(.bordered)
-                        .disabled(updateManager.isCheckingForUpdates || updateManager.isDownloading)
                         
-                        if updateManager.hasUpdate {
+                        if let errorMessage = updateManager.errorMessage {
+                            Text(errorMessage)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                        
+                        HStack(spacing: 12) {
                             Button(action: {
-                                updateManager.downloadAndInstallUpdate()
+                                updateManager.checkForUpdates()
                             }) {
-                                if updateManager.isDownloading {
+                                if updateManager.isCheckingForUpdates {
                                     HStack {
                                         ProgressView()
                                             .scaleEffect(0.7)
                                             .frame(width: 16, height: 16)
-                                        Text("下载中...")
+                                        Text("检查中...")
                                     }
                                 } else {
-                                    Label("立即更新", systemImage: "arrow.down.circle.fill")
+                                    Label("检查更新", systemImage: "arrow.clockwise")
                                 }
                             }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(updateManager.isDownloading)
-                            
-                            Button(action: {
-                                updateManager.openDownloadPage()
-                            }) {
-                                Label("打开下载页面", systemImage: "safari")
-                            }
                             .buttonStyle(.bordered)
-                            .help("在浏览器中打开 GitHub 发布页面")
-                        }
-                    }
-                    
-                    // 显示下载进度
-                    // Show download progress
-                    if updateManager.isDownloading {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("下载进度:")
-                                    .font(.caption)
-                                Spacer()
-                                Text(String(format: "%.0f%%", updateManager.downloadProgress * 100))
-                                    .font(.caption)
-                                    .fontWeight(.medium)
+                            .disabled(updateManager.isCheckingForUpdates || updateManager.isDownloading)
+                            
+                            if updateManager.hasUpdate {
+                                Button(action: {
+                                    updateManager.downloadAndInstallUpdate()
+                                }) {
+                                    if updateManager.isDownloading {
+                                        HStack {
+                                            ProgressView()
+                                                .scaleEffect(0.7)
+                                                .frame(width: 16, height: 16)
+                                            Text("下载中...")
+                                        }
+                                    } else {
+                                        Label("立即更新", systemImage: "arrow.down.circle.fill")
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(updateManager.isDownloading)
+                                
+                                Button(action: {
+                                    updateManager.openDownloadPage()
+                                }) {
+                                    Label("打开下载页面", systemImage: "safari")
+                                }
+                                .buttonStyle(.bordered)
+                                .help("在浏览器中打开 GitHub 发布页面")
                             }
-                            ProgressView(value: updateManager.downloadProgress)
                         }
+                        
+                        // 显示下载进度
+                        // Show download progress
+                        if updateManager.isDownloading {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("下载进度:")
+                                        .font(.caption)
+                                    Spacer()
+                                    Text(String(format: "%.0f%%", updateManager.downloadProgress * 100))
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                }
+                                ProgressView(value: updateManager.downloadProgress)
+                            }
+                        }
+                        
+                        Text("注意：更新时会保留您的授权和配置缓存")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .italic()
                     }
-                    
-                    Text("注意：更新时会保留您的授权和配置缓存")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .italic()
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.secondary.opacity(0.1))
+                    )
                 }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.secondary.opacity(0.1))
-                )
+                }
             }
-            }
-            .padding(32)
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func addExcludedApp() {
@@ -757,7 +842,7 @@ struct HistoryView: View {
             // 标题栏
             // Header
             HStack {
-                Text("选择日志")
+                Text("日志")
                     .font(.largeTitle)
                     .bold()
                 
@@ -942,24 +1027,41 @@ struct ActionDetailView: View {
     var onDelete: ((ActionItem) -> Void)? = nil
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // 标题
-                    // Title
-                    Text(action.displayName)
-                        .font(.largeTitle)
-                        .bold()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                // 标题
+                // Title
+                Text(action.displayName)
+                    .font(.title2)
+                    .bold()
+                
+                // 基本信息
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("基本信息")
+                        .font(.headline)
                     
-                    // 基本信息
+                    VStack(alignment: .leading, spacing: 10) {
+                        InfoRow(label: "名称", value: action.name)
+                        InfoRow(label: "类型", value: action.type.displayName)
+                        InfoRow(label: "状态", value: action.isEnabled ? "启用" : "禁用")
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.secondary.opacity(0.1))
+                    )
+                }
+                .padding(.bottom, 24)
+                
+                // 匹配条件
+                if let pattern = action.matchPattern, !pattern.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("基本信息")
+                        Text("匹配条件")
                             .font(.headline)
                         
-                        VStack(alignment: .leading, spacing: 10) {
-                            InfoRow(label: "名称", value: action.name)
-                            InfoRow(label: "类型", value: action.type.displayName)
-                            InfoRow(label: "状态", value: action.isEnabled ? "启用" : "禁用")
+                        VStack(alignment: .leading) {
+                            Text("正则表达式：\(pattern)")
+                                .font(.system(.body, design: .monospaced))
                         }
                         .padding()
                         .background(
@@ -968,16 +1070,56 @@ struct ActionDetailView: View {
                         )
                     }
                     .padding(.bottom, 24)
+                }
+                
+                // 参数
+                if action.type == .openURL, let url = action.parameters["url"], !url.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("URL 模板")
+                            .font(.headline)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(url)
+                                .font(.system(.body, design: .monospaced))
+                                .textSelection(.enabled)
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.secondary.opacity(0.1))
+                        )
+                    }
+                    .padding(.bottom, 24)
+                } else if action.type == .executeScript, let script = action.parameters["script"], !script.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("脚本内容")
+                            .font(.headline)
+                        
+                        ScrollView {
+                            Text(script)
+                                .font(.system(.body, design: .monospaced))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
+                        }
+                        .frame(minHeight: 120)
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.secondary.opacity(0.1))
+                        )
+                    }
+                    .padding(.bottom, 24)
                     
-                    // 匹配条件
-                    if let pattern = action.matchPattern, !pattern.isEmpty {
+                    if let jsonPath = action.parameters["jsonPath"], !jsonPath.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("匹配条件")
+                            Text("JSON 路径提取")
                                 .font(.headline)
                             
-                            VStack(alignment: .leading) {
-                                Text("正则表达式：\(pattern)")
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(jsonPath)
                                     .font(.system(.body, design: .monospaced))
+                                    .textSelection(.enabled)
                             }
                             .padding()
                             .background(
@@ -987,11 +1129,10 @@ struct ActionDetailView: View {
                         }
                         .padding(.bottom, 24)
                     }
-                    
-                    // 参数
-                    if action.type == .openURL, let url = action.parameters["url"], !url.isEmpty {
+                } else if action.type == .http {
+                    if let url = action.parameters["url"], !url.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("URL 模板")
+                            Text("URL")
                                 .font(.headline)
                             
                             VStack(alignment: .leading, spacing: 8) {
@@ -1006,18 +1147,39 @@ struct ActionDetailView: View {
                             )
                         }
                         .padding(.bottom, 24)
-                    } else if action.type == .executeScript, let script = action.parameters["script"], !script.isEmpty {
+                    }
+                    
+                    if let method = action.parameters["method"], !method.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("脚本内容")
+                            Text("Method")
+                                .font(.headline)
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(method)
+                                    .font(.system(.body, design: .monospaced))
+                                    .textSelection(.enabled)
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.secondary.opacity(0.1))
+                            )
+                        }
+                        .padding(.bottom, 24)
+                    }
+                    
+                    if let headers = action.parameters["headers"], !headers.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Headers")
                                 .font(.headline)
                             
                             ScrollView {
-                                Text(script)
+                                Text(headers)
                                     .font(.system(.body, design: .monospaced))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .textSelection(.enabled)
                             }
-                            .frame(minHeight: 120)
+                            .frame(minHeight: 60)
                             .padding(.horizontal)
                             .padding(.vertical, 8)
                             .background(
@@ -1026,163 +1188,81 @@ struct ActionDetailView: View {
                             )
                         }
                         .padding(.bottom, 24)
-                        
-                        if let jsonPath = action.parameters["jsonPath"], !jsonPath.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("JSON 路径提取")
-                                    .font(.headline)
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text(jsonPath)
-                                        .font(.system(.body, design: .monospaced))
-                                        .textSelection(.enabled)
-                                }
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.secondary.opacity(0.1))
-                                )
-                            }
-                            .padding(.bottom, 24)
-                        }
-                    } else if action.type == .http {
-                        if let url = action.parameters["url"], !url.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("URL")
-                                    .font(.headline)
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text(url)
-                                        .font(.system(.body, design: .monospaced))
-                                        .textSelection(.enabled)
-                                }
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.secondary.opacity(0.1))
-                                )
-                            }
-                            .padding(.bottom, 24)
-                        }
-                        
-                        if let method = action.parameters["method"], !method.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Method")
-                                    .font(.headline)
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text(method)
-                                        .font(.system(.body, design: .monospaced))
-                                        .textSelection(.enabled)
-                                }
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.secondary.opacity(0.1))
-                                )
-                            }
-                            .padding(.bottom, 24)
-                        }
-                        
-                        if let headers = action.parameters["headers"], !headers.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Headers")
-                                    .font(.headline)
-                                
-                                ScrollView {
-                                    Text(headers)
-                                        .font(.system(.body, design: .monospaced))
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .textSelection(.enabled)
-                                }
-                                .frame(minHeight: 60)
-                                .padding(.horizontal)
-                                .padding(.vertical, 8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.secondary.opacity(0.1))
-                                )
-                            }
-                            .padding(.bottom, 24)
-                        }
-                        
-                        if let body = action.parameters["body"], !body.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Body")
-                                    .font(.headline)
-                                
-                                ScrollView {
-                                    Text(body)
-                                        .font(.system(.body, design: .monospaced))
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .textSelection(.enabled)
-                                }
-                                .frame(minHeight: 80)
-                                .padding(.horizontal)
-                                .padding(.vertical, 8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.secondary.opacity(0.1))
-                                )
-                            }
-                            .padding(.bottom, 24)
-                        }
-                        
-                        if let jsonPath = action.parameters["jsonPath"], !jsonPath.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("JSON 路径提取")
-                                    .font(.headline)
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text(jsonPath)
-                                        .font(.system(.body, design: .monospaced))
-                                        .textSelection(.enabled)
-                                }
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.secondary.opacity(0.1))
-                                )
-                            }
-                            .padding(.bottom, 24)
-                        }
                     }
-
-                     if onEdit != nil || onDelete != nil {
-                        Divider()
+                    
+                    if let body = action.parameters["body"], !body.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Body")
+                                .font(.headline)
+                            
+                            ScrollView {
+                                Text(body)
+                                    .font(.system(.body, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .textSelection(.enabled)
+                            }
+                            .frame(minHeight: 80)
+                            .padding(.horizontal)
                             .padding(.vertical, 8)
-                        HStack {
-                            if let onEdit {
-                                Button {
-                                    onEdit(action)
-                                } label: {
-                                    Label("编辑", systemImage: "pencil")
-                                }
-                                .buttonStyle(.borderedProminent)
-                            }
-                            
-                            Spacer()
-                            
-                            if let onDelete {
-                                Button(role: .destructive) {
-                                    onDelete(action)
-                                } label: {
-                                    Label("删除", systemImage: "trash")
-                                }
-                                .buttonStyle(.bordered)
-                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.secondary.opacity(0.1))
+                            )
                         }
-                            .padding(.vertical, 24)
+                        .padding(.bottom, 24)
+                    }
+                    
+                    if let jsonPath = action.parameters["jsonPath"], !jsonPath.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("JSON 路径提取")
+                                .font(.headline)
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(jsonPath)
+                                    .font(.system(.body, design: .monospaced))
+                                    .textSelection(.enabled)
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.secondary.opacity(0.1))
+                            )
+                        }
+                        .padding(.bottom, 24)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 24)
+
+                    if onEdit != nil || onDelete != nil {
+                    Divider()
+                        .padding(.vertical, 8)
+                    HStack {
+                        if let onEdit {
+                            Button {
+                                onEdit(action)
+                            } label: {
+                                Label("编辑", systemImage: "pencil")
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        
+                        Spacer()
+                        
+                        if let onDelete {
+                            Button(role: .destructive) {
+                                onDelete(action)
+                            } label: {
+                                Label("删除", systemImage: "trash")
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                        .padding(.vertical, 24)
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -1212,6 +1292,7 @@ struct ActionEditorView: View {
     
     @State private var name: String
     @State private var displayName: String
+    @State private var iconName: String
     @State private var type: ActionType
     @State private var isEnabled: Bool
     @State private var matchPattern: String
@@ -1230,6 +1311,7 @@ struct ActionEditorView: View {
         
         _name = State(initialValue: action?.name ?? "")
         _displayName = State(initialValue: action?.displayName ?? "")
+        _iconName = State(initialValue: action?.iconName ?? "")
         _type = State(initialValue: action?.type ?? .openURL)
         _isEnabled = State(initialValue: action?.isEnabled ?? true)
         _matchPattern = State(initialValue: action?.matchPattern ?? "")
@@ -1282,6 +1364,19 @@ struct ActionEditorView: View {
                             .foregroundColor(.secondary)
                         TextField("输入显示名称", text: $displayName)
                             .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("图标（SF 符号名称，留空则显示名称）")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        HStack {
+                            TextField("例如: safari", text: $iconName)
+                                .textFieldStyle(.roundedBorder)
+                            if !iconName.isEmpty {
+                                Image(systemName: iconName)
+                            }
+                        }
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -1486,6 +1581,8 @@ struct ActionEditorView: View {
             isEnabled: isEnabled,
             matchPattern: matchPattern.isEmpty ? nil : matchPattern,
             parameters: parameters,
+            shortcut: action?.shortcut,
+            iconName: iconName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : iconName.trimmingCharacters(in: .whitespaces),
             sortOrder: action?.sortOrder ?? 0
         )
         

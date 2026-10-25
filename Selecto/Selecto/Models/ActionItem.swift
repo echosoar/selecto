@@ -336,13 +336,13 @@ fi
                 type: .http,
                 matchPattern: "",
                 parameters: [
-                    "url": "https://models.github.ai/inference/chat/completions",
+                    "url": "https://api.deepseek.com/chat/completions",
                     "method": "POST",
                     "headers": """
 {"authorization": "Bearer 请输入你的API密钥", "content-type": "application/json"}
 """,
                     "body": """
-{"model": "gpt-4o", "messages": [{"role": "system", "content": "请帮我使用普通初中生可以听懂的话解释它是什么"}, {"role": "user", "content": "{text}"}], "temperature": 0.7}
+{"model": "deepseek-flash", "messages": [{"role": "system", "content": "请帮我使用普通初中生可以听懂的话解释它是什么"}, {"role": "user", "content": "{text}"}], "temperature": 0.7}
 """,
                     "jsonPath": "choices.0.message.content"
                 ],

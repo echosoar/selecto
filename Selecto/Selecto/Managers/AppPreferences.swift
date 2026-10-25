@@ -43,7 +43,35 @@ final class AppPreferences: ObservableObject {
         }
     }
 
+    /// 是否启用 HTTP 代理
+    /// Whether HTTP proxy is enabled
+    @Published var httpProxyEnabled: Bool {
+        didSet { userDefaults.set(httpProxyEnabled, forKey: Self.httpProxyEnabledKey) }
+    }
+
+    /// HTTP 代理地址
+    /// HTTP proxy address
+    @Published var httpProxyAddress: String {
+        didSet { userDefaults.set(httpProxyAddress, forKey: Self.httpProxyAddressKey) }
+    }
+
+    /// 是否启用 HTTPS 代理
+    /// Whether HTTPS proxy is enabled
+    @Published var httpsProxyEnabled: Bool {
+        didSet { userDefaults.set(httpsProxyEnabled, forKey: Self.httpsProxyEnabledKey) }
+    }
+
+    /// HTTPS 代理地址
+    /// HTTPS proxy address
+    @Published var httpsProxyAddress: String {
+        didSet { userDefaults.set(httpsProxyAddress, forKey: Self.httpsProxyAddressKey) }
+    }
+
     private let userDefaults: UserDefaults
+    private static let httpProxyEnabledKey = "HTTPProxyEnabled"
+    private static let httpProxyAddressKey = "HTTPProxyAddress"
+    private static let httpsProxyEnabledKey = "HTTPSProxyEnabled"
+    private static let httpsProxyAddressKey = "HTTPSProxyAddress"
     private static let forceSelectionKey = "ForceSelectionEnabled"
     private static let forceSelectionExcludedAppsKey = "ForceSelectionExcludedApps"
     private static let doubleClickSelectionKey = "DoubleClickSelectionEnabled"
@@ -53,5 +81,9 @@ final class AppPreferences: ObservableObject {
         forceSelectionEnabled = userDefaults.object(forKey: Self.forceSelectionKey) as? Bool ?? false
         forceSelectionExcludedApps = userDefaults.object(forKey: Self.forceSelectionExcludedAppsKey) as? [String] ?? []
         doubleClickSelectionEnabled = userDefaults.object(forKey: Self.doubleClickSelectionKey) as? Bool ?? false
+        httpProxyEnabled = userDefaults.bool(forKey: Self.httpProxyEnabledKey)
+        httpProxyAddress = userDefaults.string(forKey: Self.httpProxyAddressKey) ?? ""
+        httpsProxyEnabled = userDefaults.bool(forKey: Self.httpsProxyEnabledKey)
+        httpsProxyAddress = userDefaults.string(forKey: Self.httpsProxyAddressKey) ?? ""
     }
 }

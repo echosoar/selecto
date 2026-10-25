@@ -163,7 +163,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     /// 显示控制面板
     /// Show control panel window
-    @objc private func showControlPanel() {
+    @objc func showControlPanel() {
         // 切换激活策略以显示应用程序
         // Switch activation policy to show application
         NSApp.setActivationPolicy(.regular)

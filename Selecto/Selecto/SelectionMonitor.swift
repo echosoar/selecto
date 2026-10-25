@@ -80,7 +80,19 @@ class SelectionMonitor {
     /// 是否忽略接下来的短时选择
     /// Flag to ignore next short-lived selection
     private var shouldIgnoreNextSelection = false
-    
+
+    /// 上一次用户按下 Cmd+C 的时间
+    /// Timestamp of the last user-initiated Cmd+C keypress
+    private var lastUserCopyDate: Date?
+
+    /// 是否正在执行强制选词（用于忽略模拟 Cmd+C 产生的键盘事件）
+    /// Whether a forced copy is in progress (used to ignore simulated Cmd+C events)
+    private var isPerformingForcedCopy = false
+
+    /// 鼠标按下时的剪贴板文本内容（用于检测用户是否已自行复制）
+    /// Clipboard text captured at mouse down to detect user-initiated copies
+    private var clipboardAtMouseDown: String?
+
     // MARK: - Public Methods
     
     /// 开始监控文本选择
@@ -133,6 +145,7 @@ class SelectionMonitor {
         lastMouseDownLocation = event.locationInWindow
         lastMouseUpLocation = nil
         didMeetMovementThreshold = false
+        clipboardAtMouseDown = NSPasteboard.general.string(forType: .string)
         if currentSelectedText != nil {
             currentSelectedText = nil
             currentSelectionBounds = nil
@@ -172,13 +185,13 @@ class SelectionMonitor {
     /// 处理键盘按下事件
     /// Handle key down event
     private func handleKeyDown(_ event: NSEvent) {
-        // // 检查是否是快捷键（如 Cmd+C）
-        // // Check if it's a shortcut key (e.g., Cmd+C)
-        // if event.modifierFlags.contains(.command) {
-        //     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-        //         self?.checkForTextSelection()
-        //     }
-        // }
+        // 检测用户按下 Cmd+C，记录时间以便跳过后续的强制选词
+        // Detect user-initiated Cmd+C to skip subsequent forced copy
+        if !isPerformingForcedCopy,
+           event.modifierFlags.contains(.command),
+           event.keyCode == 8 {
+            lastUserCopyDate = Date()
+        }
     }
     
     /// 检查是否有文本被选中
@@ -400,6 +413,21 @@ class SelectionMonitor {
             return nil
         }
 
+        // 如果用户刚刚按下了 Cmd+C，跳过强制选词，避免恢复剪贴板时覆盖用户的复制内容
+        // Skip forced copy if user pressed Cmd+C recently to avoid wiping their copy
+        if let lastCopy = lastUserCopyDate, Date().timeIntervalSince(lastCopy) < 0.5 {
+            return nil
+        }
+
+        // 如果自鼠标按下以来剪贴板内容已变化，说明用户可能已经自行复制，跳过以避免覆盖
+        // If clipboard changed since mouse down, user likely copied; skip to avoid wiping it
+        if let clipboardAtMouseDown = clipboardAtMouseDown {
+            let currentClipboard = NSPasteboard.general.string(forType: .string)
+            if currentClipboard != clipboardAtMouseDown {
+                return nil
+            }
+        }
+
         // 检查当前应用是否在排除列表中
         // Check if current app is in the excluded list
         if let frontmostApp = NSWorkspace.shared.frontmostApplication,
@@ -431,8 +459,18 @@ class SelectionMonitor {
             return nil
         }
 
+        // 标记正在执行强制选词，以忽略模拟 Cmd+C 产生的键盘事件
+        // Mark forced copy in progress to ignore the simulated Cmd+C keyboard event
+        isPerformingForcedCopy = true
+
         var errorDict: NSDictionary?
         let descriptor = script.executeAndReturnError(&errorDict)
+
+        // 延迟重置标志，确保模拟 Cmd+C 的排队键盘事件被忽略
+        // Delay resetting the flag so the queued simulated Cmd+C event is ignored
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.isPerformingForcedCopy = false
+        }
 
         if let errorDict {
             print("Forced copy AppleScript error: \(errorDict)")
