@@ -120,7 +120,7 @@ class ToolbarView: NSView {
     /// Display error message
     /// - Parameter message: 错误内容 / Error message
     func showError(_ message: String) {
-        populateResults(with: [message], isError: true)
+        populateResults(with: message.components(separatedBy: .newlines), isError: true)
     }
     
     // MARK: - Private Methods

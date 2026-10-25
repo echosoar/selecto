@@ -464,6 +464,10 @@ struct PreferencesView: View {
     /// Bundle ID for new excluded app
     @State private var newExcludedAppBundleId: String = ""
 
+    /// 合并默认动作的结果提示
+    /// Result message of merging default actions
+    @State private var mergeResultMessage: String?
+
     /// Modal 弹窗
     /// Modal presenter
     @Environment(\.modalPresenter) private var modalPresenter
@@ -579,6 +583,39 @@ struct PreferencesView: View {
                     )
                 }
                 
+                // 网络设置
+                // Network settings
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("网络设置", systemImage: "network")
+                        .font(.headline)
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("开启 HTTP 代理", isOn: $preferences.httpProxyEnabled)
+                            .toggleStyle(.switch)
+                        
+                        if preferences.httpProxyEnabled {
+                            TextField("例如: http://127.0.0.1:7890", text: $preferences.httpProxyAddress)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Divider()
+                            .padding(.vertical, 4)
+                        
+                        Toggle("开启 HTTPS 代理", isOn: $preferences.httpsProxyEnabled)
+                            .toggleStyle(.switch)
+                        
+                        if preferences.httpsProxyEnabled {
+                            TextField("例如: http://127.0.0.1:7890", text: $preferences.httpsProxyAddress)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.secondary.opacity(0.1))
+                    )
+                }
+                
                 // 配置管理
                 // Configuration management
                 VStack(alignment: .leading, spacing: 12) {
@@ -597,6 +634,27 @@ struct PreferencesView: View {
                             Label("打开配置文件目录", systemImage: "folder.badge.gear")
                         }
                         .buttonStyle(.bordered)
+                        
+                        Text("将内置的默认动作合并到您的动作列表中，已存在同名动作时会跳过")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        HStack(spacing: 12) {
+                            Button(action: {
+                                let added = ActionManager.shared.mergeDefaultActions()
+                                mergeResultMessage = added > 0 ? "已合并 \(added) 个默认动作" : "没有需要合并的默认动作"
+                            }) {
+                                Label("合并默认动作", systemImage: "arrow.triangle.merge")
+                            }
+                            .buttonStyle(.bordered)
+                            
+                            if let mergeResultMessage {
+                                Text(mergeResultMessage)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                     .padding()
                     .background(

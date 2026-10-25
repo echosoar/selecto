@@ -99,6 +99,33 @@ class ActionManager {
         postActionsUpdateNotification()
     }
     
+    // MARK: - Public Methods (Merge)
+    
+    /// 合并内置默认动作，同名动作跳过
+    /// Merge built-in default actions, skipping those with an existing name
+    /// - Returns: 新增的动作数量 / Number of added actions
+    @discardableResult
+    func mergeDefaultActions() -> Int {
+        var nextOrder = (actions.map { $0.sortOrder }.max() ?? -1) + 1
+        var added = 0
+        
+        for var defaultAction in ActionItem.defaultActions() {
+            if actions.contains(where: { $0.name == defaultAction.name }) {
+                continue
+            }
+            defaultAction.sortOrder = nextOrder
+            nextOrder += 1
+            actions.append(defaultAction)
+            added += 1
+        }
+        
+        if added > 0 {
+            saveActions()
+            postActionsUpdateNotification()
+        }
+        return added
+    }
+    
     // MARK: - Private Methods
     
     /// 加载动作配置
