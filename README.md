@@ -2,7 +2,7 @@
 
 一个轻量但强大的 macOS 划词增强工具 / A powerful macOS text selection enhancement tool
 
-Selecto 是一个使用 Swift 开发的 macOS 应用程序，当选中一段文本时，会在文本上方自动显示一个浮动工具栏，提供多种可自定义的功能。
+Selecto 是一个使用 Swift 开发的 macOS 应用程序，当选中一段文本时，会在文本下方自动显示一个浮动工具栏，提供多种可自定义的功能。
 
 ![](./static/screenshot/image.png)
 

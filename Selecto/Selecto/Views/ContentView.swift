@@ -1292,6 +1292,7 @@ struct ActionEditorView: View {
     
     @State private var name: String
     @State private var displayName: String
+    @State private var iconName: String
     @State private var type: ActionType
     @State private var isEnabled: Bool
     @State private var matchPattern: String
@@ -1310,6 +1311,7 @@ struct ActionEditorView: View {
         
         _name = State(initialValue: action?.name ?? "")
         _displayName = State(initialValue: action?.displayName ?? "")
+        _iconName = State(initialValue: action?.iconName ?? "")
         _type = State(initialValue: action?.type ?? .openURL)
         _isEnabled = State(initialValue: action?.isEnabled ?? true)
         _matchPattern = State(initialValue: action?.matchPattern ?? "")
@@ -1362,6 +1364,19 @@ struct ActionEditorView: View {
                             .foregroundColor(.secondary)
                         TextField("输入显示名称", text: $displayName)
                             .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("图标（SF 符号名称，留空则显示名称）")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        HStack {
+                            TextField("例如: safari", text: $iconName)
+                                .textFieldStyle(.roundedBorder)
+                            if !iconName.isEmpty {
+                                Image(systemName: iconName)
+                            }
+                        }
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -1566,6 +1581,8 @@ struct ActionEditorView: View {
             isEnabled: isEnabled,
             matchPattern: matchPattern.isEmpty ? nil : matchPattern,
             parameters: parameters,
+            shortcut: action?.shortcut,
+            iconName: iconName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : iconName.trimmingCharacters(in: .whitespaces),
             sortOrder: action?.sortOrder ?? 0
         )
         

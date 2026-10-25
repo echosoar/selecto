@@ -192,8 +192,8 @@ class ToolbarWindowController: NSWindowController {
         }
         // 工具栏视图内部已有 10px 的边距，window 大小应该等于内容大小
         // ToolbarView already has 10px internal padding, window size should match content size
-        let contentWidth = min(max(preferredSize.width, 180), 500)
-        let contentHeight = max(preferredSize.height, 44)
+        let contentWidth = min(preferredSize.width, 500)
+        let contentHeight = preferredSize.height
         let screenFrame = screen.visibleFrame
         let horizontalPadding: CGFloat = 10
         var xPosition = bounds.midX - contentWidth / 2
@@ -281,6 +281,11 @@ class ToolbarWindowController: NSWindowController {
 // MARK: - ToolbarViewDelegate
 
 extension ToolbarWindowController: ToolbarViewDelegate {
+    func didClickMore() {
+        hideToolbar(force: true)
+        (NSApp.delegate as? AppDelegate)?.showControlPanel()
+    }
+    
     /// 当点击动作按钮时调用
     /// Called when action button is clicked
     func didClickAction(_ action: ActionItem, selectedText: String) {

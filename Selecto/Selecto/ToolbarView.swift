@@ -14,6 +14,10 @@ protocol ToolbarViewDelegate: AnyObject {
     /// 点击动作按钮
     /// Action button clicked
     func didClickAction(_ action: ActionItem, selectedText: String)
+    
+    /// 点击“更多”按钮
+    /// More button clicked
+    func didClickMore()
 }
 
 /// 工具栏视图
@@ -89,6 +93,7 @@ class ToolbarView: NSView {
             let button = createActionButton(for: action)
             buttonStackView.addArrangedSubview(button)
         }
+        buttonStackView.addArrangedSubview(createMoreButton())
     }
     
     /// 显示脚本执行中的状态
@@ -134,19 +139,20 @@ class ToolbarView: NSView {
         // Setup background
         layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.95).cgColor
         layer?.cornerRadius = 8
+        layer?.masksToBounds = true
         layer?.borderWidth = 1
         layer?.borderColor = NSColor.separatorColor.cgColor
         
         mainStackView = NSStackView()
         mainStackView.orientation = .vertical
-        mainStackView.spacing = 10
+        mainStackView.spacing = 0
         mainStackView.alignment = .leading
         mainStackView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(mainStackView)
         
         buttonStackView = NSStackView()
         buttonStackView.orientation = .horizontal
-        buttonStackView.spacing = 8
+        buttonStackView.spacing = 0
         buttonStackView.alignment = .centerY
         buttonStackView.distribution = .gravityAreas
         mainStackView.addArrangedSubview(buttonStackView)
@@ -155,6 +161,7 @@ class ToolbarView: NSView {
         statusStackView.orientation = .horizontal
         statusStackView.spacing = 6
         statusStackView.alignment = .centerY
+        statusStackView.edgeInsets = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
         statusStackView.isHidden = true
         
         progressIndicator = NSProgressIndicator()
@@ -175,14 +182,15 @@ class ToolbarView: NSView {
         resultsStackView.orientation = .vertical
         resultsStackView.spacing = 6
         resultsStackView.alignment = .leading
+        resultsStackView.edgeInsets = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
         resultsStackView.isHidden = true
         mainStackView.addArrangedSubview(resultsStackView)
         
         NSLayoutConstraint.activate([
-            mainStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
-            mainStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
-            mainStackView.topAnchor.constraint(equalTo: topAnchor, constant: 10),
-            mainStackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -10)
+            mainStackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            mainStackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            mainStackView.topAnchor.constraint(equalTo: topAnchor),
+            mainStackView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }
     
@@ -190,19 +198,19 @@ class ToolbarView: NSView {
     /// Create action button
     /// - Parameter action: 动作项 / Action item
     /// - Returns: 按钮 / Button
-    private func createActionButton(for action: ActionItem) -> NSButton {
-        let button = NSButton(frame: .zero)
-        button.bezelStyle = .rounded
-        button.title = action.displayName
-        button.target = self
-        button.action = #selector(actionButtonClicked(_:))
-        button.tag = action.id.hashValue
-        
-        // 保存动作引用
-        // Save action reference
-        objc_setAssociatedObject(button, &AssociatedKeys.action, action, .OBJC_ASSOCIATION_RETAIN)
-        
-        return button
+    private func createActionButton(for action: ActionItem) -> NSView {
+        return ToolbarActionItemView(title: action.displayName, iconName: action.iconName) { [weak self] in
+            guard let self = self else { return }
+            self.delegate?.didClickAction(action, selectedText: self.selectedText)
+        }
+    }
+    
+    /// 创建“更多”按钮，打开控制面板
+    /// Create the "more" item that opens the control panel
+    private func createMoreButton() -> NSView {
+        return ToolbarActionItemView(title: "更多", iconName: "ellipsis") { [weak self] in
+            self?.delegate?.didClickMore()
+        }
     }
     
     /// 清除状态和结果
@@ -306,15 +314,84 @@ class ToolbarView: NSView {
               let url = URL(string: text) else { return }
         NSWorkspace.shared.open(url)
     }
+}
+
+// MARK: - ToolbarActionItemView
+
+/// 工具栏选项视图：有图标时显示图标，否则显示名称；悬停时变色
+/// Toolbar item: shows icon if set, otherwise display name; highlights on hover
+final class ToolbarActionItemView: NSView {
     
-    /// 动作按钮点击处理
-    /// Action button click handler
-    @objc private func actionButtonClicked(_ sender: NSButton) {
-        guard let action = objc_getAssociatedObject(sender, &AssociatedKeys.action) as? ActionItem else {
-            return
-        }
+    private static let normalColor = NSColor(srgbRed: 0x33 / 255.0, green: 0x33 / 255.0, blue: 0x33 / 255.0, alpha: 0)
+    private static let hoverColor = NSColor(srgbRed: 0x66 / 255.0, green: 0x66 / 255.0, blue: 0x66 / 255.0, alpha: 1)
+    
+    private let onClick: () -> Void
+    
+    init(title: String, iconName: String?, onClick: @escaping () -> Void) {
+        self.onClick = onClick
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.backgroundColor = Self.normalColor.cgColor
+        translatesAutoresizingMaskIntoConstraints = false
         
-        delegate?.didClickAction(action, selectedText: selectedText)
+        let content: NSView
+        let symbolName = iconName?.trimmingCharacters(in: .whitespaces) ?? ""
+        if !symbolName.isEmpty,
+           let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: title) {
+            let imageView = NSImageView(image: image)
+            imageView.contentTintColor = .white
+            imageView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+            content = imageView
+        } else {
+            let label = NSTextField(labelWithString: title)
+            label.font = NSFont.systemFont(ofSize: 13)
+            label.textColor = .white
+            content = label
+        }
+        content.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(content)
+        
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 32),
+            content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
+            content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            content.centerYAnchor.constraint(equalTo: centerYAnchor)
+        ])
+        toolTip = title
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach { removeTrackingArea($0) }
+        addTrackingArea(NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        ))
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        layer?.backgroundColor = Self.hoverColor.cgColor
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        layer?.backgroundColor = Self.normalColor.cgColor
+    }
+    
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    
+    override func mouseDown(with event: NSEvent) {}
+    
+    override func mouseUp(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if bounds.contains(point) {
+            onClick()
+        }
     }
 }
 
@@ -323,6 +400,5 @@ class ToolbarView: NSView {
 /// 关联键
 /// Associated keys
 private struct AssociatedKeys {
-    static var action: UInt8 = 0
     static var resultText: UInt8 = 0
 }
