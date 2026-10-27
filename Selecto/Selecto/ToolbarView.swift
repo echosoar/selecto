@@ -134,14 +134,17 @@ class ToolbarView: NSView {
     /// Setup view
     private func setupView() {
         wantsLayer = true
+        appearance = NSAppearance(named: .darkAqua)
         
         // 设置背景
         // Setup background
-        layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.95).cgColor
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.95).cgColor
+            layer?.borderColor = NSColor.separatorColor.cgColor
+        }
         layer?.cornerRadius = 8
         layer?.masksToBounds = true
         layer?.borderWidth = 1
-        layer?.borderColor = NSColor.separatorColor.cgColor
         
         mainStackView = NSStackView()
         mainStackView.orientation = .vertical
