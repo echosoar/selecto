@@ -362,9 +362,9 @@ fi
 {"authorization": "Bearer 请输入你的API密钥", "content-type": "application/json"}
 """,
                     "body": """
-{"state":"Do you agree with this statement: {text}","model":"jev-latest","questions":{"Agree":{"type":"choice","instructions":"Do you agree with this statement","criteria":{"agree":"agree","Not Agree":"Do not agree","Not Determined":"Cannot be determined"}}}}
+{"state":"Do you agree with this statement: {text}","model":"jev-latest","questions":{"Agree":{"type":"choice","instructions":"Do you agree with this statement","criteria":{"Agree":"Agree","Not Agree":"Do not agree","Not Determined":"Cannot be determined"}}}}
 """,
-                    "jsonPath": "answers.agree.choice"
+                    "jsonPath": "answers.Agree.choice"
                 ],
                 sortOrder: 7
             ),
