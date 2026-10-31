@@ -306,7 +306,6 @@ class ActionExecutor {
             }
             
             var responseLines: [String] = []
-            responseLines.append("状态码: \(httpResponse.statusCode)")
             
             if let data = data, !data.isEmpty {
                 let jsonPath = parameters["jsonPath"]

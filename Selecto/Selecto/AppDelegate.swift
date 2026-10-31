@@ -25,6 +25,7 @@ struct SelectoApp: App {
         WindowGroup {
             ContentView()
                 .withModal(appState: appState)
+                .background(ControlPanelWindowAccessor(appDelegate: appDelegate))
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
@@ -52,6 +53,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 状态栏菜单项
     /// Status bar menu item
     private var statusItem: NSStatusItem?
+
+    private weak var controlPanelWindow: NSWindow?
     
     /// 文本选择监控器
     /// Text selection monitor
@@ -132,6 +135,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func startMonitoring() {
         selectionMonitor?.startMonitoring()
     }
+
+    func registerControlPanelWindow(_ window: NSWindow) {
+        controlPanelWindow = window
+        window.delegate = self
+    }
     
     // MARK: - Private Methods
     
@@ -164,6 +172,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 显示控制面板
     /// Show control panel window
     @objc func showControlPanel() {
+        guard let mainWindow = controlPanelWindow else { return }
+
         // 切换激活策略以显示应用程序
         // Switch activation policy to show application
         NSApp.setActivationPolicy(.regular)
@@ -172,19 +182,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Activate main application
         NSApp.activate(ignoringOtherApps: true)
         
-        // 查找并显示主窗口（WindowGroup 创建的窗口）
-        // Find and show main window (created by WindowGroup)
-        if let mainWindow = NSApp.windows.first(where: { $0.contentViewController is NSHostingController<ContentView> }) {
-            // 设置窗口代理以监听关闭事件
-            // Set window delegate to listen for close events
-            mainWindow.delegate = self
-            mainWindow.makeKeyAndOrderFront(nil)
-        } else if let anyWindow = NSApp.windows.first {
-            // 如果没有找到 ContentView 窗口，显示第一个窗口
-            // If ContentView window not found, show first window
-            anyWindow.delegate = self
-            anyWindow.makeKeyAndOrderFront(nil)
-        }
+        mainWindow.makeKeyAndOrderFront(nil)
     }
     
     /// 处理动作更新通知
@@ -209,6 +207,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             toolbarController?.hideToolbar(force: true)
             currentSelectedText = nil
             currentSelectionBounds = nil
+        }
+    }
+}
+
+private struct ControlPanelWindowAccessor: NSViewRepresentable {
+    let appDelegate: AppDelegate
+
+    func makeNSView(context: Context) -> WindowAccessorView {
+        let view = WindowAccessorView()
+        view.appDelegate = appDelegate
+        return view
+    }
+
+    func updateNSView(_ nsView: WindowAccessorView, context: Context) {}
+
+    final class WindowAccessorView: NSView {
+        weak var appDelegate: AppDelegate?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let window = window {
+                appDelegate?.registerControlPanelWindow(window)
+            }
         }
     }
 }

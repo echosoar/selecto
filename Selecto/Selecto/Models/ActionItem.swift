@@ -348,6 +348,26 @@ fi
                 ],
                 sortOrder: 6
             ),
+            // 7. 判断
+            // Decision
+            ActionItem(
+                name: "decision",
+                displayName: "判断",
+                type: .http,
+                matchPattern: "",
+                parameters: [
+                    "url": "https://api.typesafe.ai/v1/systemone",
+                    "method": "POST",
+                    "headers": """
+{"authorization": "Bearer 请输入你的API密钥", "content-type": "application/json"}
+""",
+                    "body": """
+{"state":"Do you agree with this statement: {text}","model":"jev-latest","questions":{"Agree":{"type":"choice","instructions":"Do you agree with this statement","criteria":{"agree":"agree","Not Agree":"Do not agree","Not Determined":"Cannot be determined"}}}}
+""",
+                    "jsonPath": "answers.agree.choice"
+                ],
+                sortOrder: 7
+            ),
         ]
     }
 }

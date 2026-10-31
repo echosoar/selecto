@@ -1487,8 +1487,7 @@ struct ActionEditorView: View {
                                 Text("Headers (JSON)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                TextEditor(text: $httpHeaders)
-                                    .font(.system(.body, design: .monospaced))
+                                JSONTextEditor(text: $httpHeaders)
                                     .frame(minHeight: 60)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 6)
@@ -1504,8 +1503,7 @@ struct ActionEditorView: View {
                                     Text("Body (JSON)")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
-                                    TextEditor(text: $httpBody)
-                                        .font(.system(.body, design: .monospaced))
+                                    JSONTextEditor(text: $httpBody)
                                         .frame(minHeight: 80)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 6)
@@ -1588,6 +1586,43 @@ struct ActionEditorView: View {
         
         onSave(newAction)
         onCancel()
+    }
+}
+
+private struct JSONTextEditor: NSViewRepresentable {
+    @Binding var text: String
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSTextView.scrollableTextView()
+        guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        textView.isRichText = false
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        textView.delegate = context.coordinator
+        textView.string = text
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? NSTextView, textView.string != text else { return }
+        textView.string = text
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        @Binding var text: String
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text = textView.string
+        }
     }
 }
 
